@@ -21,7 +21,8 @@ body {
 }
 
 #gameCanvas {
-    border: 2px solid #333;
+    width: 100vw;
+    height: 100vh;
     background: #000;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
@@ -58,6 +59,199 @@ body {
     font-weight: bold;
     text-align: center;
     border: 1px solid #fff;
+    margin-bottom: 10px;
+}
+
+.pdf-info {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 16px;
+    border-radius: 5px;
+    border: 1px solid #fff;
+    font-size: 12px;
+}
+
+.pdf-status {
+    margin-bottom: 8px;
+    color: #ccc;
+}
+
+.pdf-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.upload-pdf-btn {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.upload-pdf-btn:hover {
+    background: #1976D2;
+}
+
+.reload-pdf-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.reload-pdf-btn:hover {
+    background: #45a049;
+}
+
+.reload-pdf-btn:disabled {
+    background: #666;
+    cursor: not-allowed;
+}
+
+/* PDF Welcome Popup Styles */
+.pdf-welcome-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.pdf-welcome-popup {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    border-radius: 20px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.pdf-welcome-popup h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.pdf-welcome-popup p {
+    font-size: 16px;
+    margin-bottom: 30px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.upload-section {
+    margin-bottom: 30px;
+}
+
+.upload-pdf-btn-large {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.upload-pdf-btn-large:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.upload-help, .continue-help {
+    font-size: 12px;
+    margin-top: 8px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.or-divider {
+    margin: 20px 0;
+    position: relative;
+}
+
+.or-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.or-divider span {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 0 15px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.continue-section {
+    margin-bottom: 30px;
+}
+
+.continue-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 25px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.continue-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.features-preview {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.features-preview h3 {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: #fff;
+}
+
+.features-preview ul {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+}
+
+.features-preview li {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Hide the welcome popup when hidden class is applied */
+.pdf-welcome-overlay.hidden {
+    display: none;
 }
 
 .controls-help {

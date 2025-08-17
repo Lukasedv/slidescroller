@@ -10,11 +10,19 @@ A browser-based 2D roguelike game where players navigate through rooms that rese
 - **Room Transitions**: Seamless scrolling between connected rooms
 - **Physics Engine**: Gravity, jumping, collision detection, and platform interactions
 
+### 📄 PDF Integration (NEW!)
+- **PDF Upload Support**: Place any PDF in the `/presentation/` folder to use as slide backgrounds
+- **Automatic Detection**: Game automatically finds and loads PDF files
+- **Password Support**: Works with encrypted/password-protected PDFs
+- **Up to 100 Slides**: Supports presentations with up to 100 pages
+- **High Quality Rendering**: PDF pages are converted to high-resolution images
+- **Hot Reload**: Click "Reload PDF" button to refresh after changing PDFs
+
 ### 🎨 Visual Design
-- **Slide Backgrounds**: Each room displays unique content like presentation slides
-- **Procedural Platforms**: Dynamically generated platforms per room
-- **Debug Overlay**: Real-time game state information
-- **Health System**: Visual health bar with damage tracking
+- **PDF Slide Backgrounds**: Your presentation slides become the game environment
+- **Fullscreen Experience**: Game runs in fullscreen for immersive presentation viewing
+- **Responsive Scaling**: Slides automatically scale to fit any screen size
+- **Fallback Slides**: Built-in placeholder slides when no PDF is provided
 
 ### 🏗️ Technical Architecture
 - **Modular Classes**: Separate systems for Player, Rooms, Input, and Game management
@@ -34,9 +42,27 @@ A browser-based 2D roguelike game where players navigate through rooms that rese
 
 ## Getting Started
 
+### Quick Start
 1. Clone or download the repository
 2. Open `index.html` in a modern web browser
 3. Start playing immediately - no build process required!
+
+### Using Your Own PDF Presentation
+1. Save your PDF file in the `/presentation/` folder with one of these names:
+   - `presentation.pdf` (recommended)
+   - `slides.pdf`
+   - `slide.pdf` 
+   - `deck.pdf`
+   - `talk.pdf`
+2. Refresh the game or click the "Reload PDF" button
+3. Your PDF pages will become interactive game slides!
+
+### Supported PDF Features
+- ✅ Up to 100 pages/slides
+- ✅ Password-protected PDFs
+- ✅ Any PDF viewable in browsers
+- ✅ Automatic page-to-room conversion
+- ✅ High-quality image rendering
 
 ## File Structure
 
@@ -44,10 +70,15 @@ A browser-based 2D roguelike game where players navigate through rooms that rese
 slidescroller/
 ├── index.html          # Main HTML file
 ├── style.css           # Game styling and UI
+├── presentation/       # Place your PDF files here
+│   ├── README.md       # PDF upload instructions
+│   └── instructions.html # Detailed PDF setup guide
 ├── js/
 │   ├── game.js         # Main game loop and management
 │   ├── player.js       # Player character logic
 │   ├── room.js         # Room system and transitions
+│   ├── pdf-processor.js # PDF loading and conversion
+│   ├── weapons.js      # Combat system
 │   └── utils.js        # Utility classes and functions
 └── .github/
     └── copilot-instructions.md
@@ -63,12 +94,12 @@ The game features a connected series of rooms, each with:
 
 ## Planned Features
 
-- 📄 **PDF Import**: Upload presentation slides as room backgrounds
 - 🤖 **Enemy AI**: Combat encounters and boss fights
 - 🎒 **Inventory System**: Collectible items and power-ups
 - 💾 **Save System**: Progress persistence
 - 🔊 **Audio**: Sound effects and background music
 - 🛠️ **Level Editor**: Custom room creation tools
+- 📱 **Mobile Support**: Touch controls for mobile devices
 
 ## Development
 

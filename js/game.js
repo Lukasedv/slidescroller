@@ -4,33 +4,61 @@ class Game {
         this.ctx = this.canvas.getContext('2d');
         this.inputManager = new InputManager();
         this.roomManager = new RoomManager();
-        this.player = new Player(100, 702); // Place player on ground (750 - 48 = 702)
+        
+        // Get actual screen dimensions
+        this.screenWidth = window.innerWidth;
+        this.screenHeight = window.innerHeight;
+        
+        this.player = new Player(100, this.screenHeight - 150); // Place player near bottom with some margin
         
         this.lastTime = 0;
         this.deltaTime = 0;
         this.isRunning = false;
         
         // Game state
-        this.isPaused = false;
+        this.isPaused = true; // Start paused until user makes choice
         this.gameStarted = false;
         this.pausedByFocusLoss = false; // Track if paused by tab switching
+        this.welcomeShown = false;
         
         this.init();
     }
 
     init() {
-        // Set up canvas
-        this.canvas.width = 1200;
-        this.canvas.height = 800;
+        // Set up canvas to fullscreen
+        this.canvas.width = this.screenWidth;
+        this.canvas.height = this.screenHeight;
         
         // Disable image smoothing for pixel-perfect rendering
         this.ctx.imageSmoothingEnabled = false;
         
-        // Start the game loop
+        // Show welcome popup before starting
+        this.showWelcomePopup();
+        
+        // Start the game loop (but paused)
         this.start();
         
         console.log('SlideScroller Game initialized!');
         console.log('Controls: A/D - Move, W - Jump, Space - Attack');
+        console.log(`Screen size: ${this.screenWidth}x${this.screenHeight}`);
+    }
+
+    showWelcomePopup() {
+        const overlay = document.getElementById('pdfWelcomeOverlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            this.welcomeShown = true;
+        }
+    }
+
+    hideWelcomePopup() {
+        const overlay = document.getElementById('pdfWelcomeOverlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
+        this.isPaused = false;
+        this.gameStarted = true;
+        this.welcomeShown = false;
     }
 
     start() {
@@ -65,7 +93,7 @@ class Game {
         }
         
         // Update game systems
-        this.roomManager.update(this.deltaTime);
+        this.roomManager.update(this.deltaTime, this.screenWidth, this.screenHeight);
         this.player.update(this.deltaTime, this.roomManager, this.inputManager);
         
         // Update game state
@@ -87,7 +115,23 @@ class Game {
         const roomIndicator = document.getElementById('roomIndicator');
         if (roomIndicator && this.roomManager.getCurrentRoom()) {
             const currentRoom = this.roomManager.getCurrentRoom();
-            roomIndicator.textContent = `Room ${currentRoom.id} - ${currentRoom.slideContent}`;
+            const totalRooms = this.roomManager.getTotalRooms();
+            roomIndicator.textContent = `Slide ${currentRoom.id}/${totalRooms} - ${currentRoom.slideContent}`;
+        }
+        
+        // Update PDF status
+        const pdfStatus = document.getElementById('pdfStatus');
+        
+        if (pdfStatus) {
+            if (this.roomManager.isLoadingPresentation()) {
+                const progress = this.roomManager.getLoadingProgress();
+                pdfStatus.textContent = `Loading: ${progress.message} (${Math.round(progress.progress)}%)`;
+            } else if (this.roomManager.pdfProcessor && this.roomManager.pdfProcessor.isReady()) {
+                const pageCount = this.roomManager.pdfProcessor.getPageCount();
+                pdfStatus.textContent = `PDF loaded: ${pageCount} slides`;
+            } else {
+                pdfStatus.textContent = 'Using demo slides';
+            }
         }
     }
 
@@ -114,7 +158,7 @@ class Game {
         // Render debug information in top-right corner
         this.ctx.save();
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        this.ctx.fillRect(1000, 10, 190, 120);
+        this.ctx.fillRect(this.screenWidth - 200, 10, 190, 140);
         
         this.ctx.fillStyle = '#ffffff';
         this.ctx.font = '12px monospace';
@@ -127,13 +171,14 @@ class Game {
             `Velocity: ${Math.round(player.velocity.x)}, ${Math.round(player.velocity.y)}`,
             `Grounded: ${player.isGrounded}`,
             `Health: ${player.health}/${player.maxHealth}`,
-            `Room: ${this.roomManager.getCurrentRoom()?.id || 'None'}`,
+            `Slide: ${this.roomManager.getCurrentRoom()?.id || 'None'}/${this.roomManager.getTotalRooms()}`,
             `Transitioning: ${this.roomManager.isTransitioning}`,
-            `Can Transition: ${player.canTransition}`
+            `Can Transition: ${player.canTransition}`,
+            `PDF Status: ${this.roomManager.pdfProcessor?.isReady() ? 'Loaded' : 'Default'}`
         ];
         
         debugLines.forEach((line, index) => {
-            this.ctx.fillText(line, 1010, 30 + index * 14);
+            this.ctx.fillText(line, this.screenWidth - 190, 30 + index * 14);
         });
         
         this.ctx.restore();
@@ -184,8 +229,9 @@ class Game {
 
     restart() {
         // Reset game state
-        this.player = new Player(100, 600);
+        this.player = new Player(100, this.screenHeight - 150);
         this.roomManager = new RoomManager();
+        this.roomManager.updateScreenDimensions(this.screenWidth, this.screenHeight);
         this.isPaused = false;
         this.gameStarted = true;
         
@@ -204,15 +250,68 @@ window.addEventListener('load', () => {
     game = new Game();
 });
 
+// Global function to reload PDF presentation (removed reload button functionality)
+window.reloadPresentationPDF = async function() {
+    // This function is kept for compatibility but no longer used in UI
+    if (game && game.roomManager) {
+        console.log('Reloading PDF presentation...');
+        await game.roomManager.reloadPDF();
+    }
+};
+
+// Global function to continue without PDF
+window.continueWithoutPDF = function() {
+    if (game) {
+        console.log('Continuing with demo slides');
+        game.hideWelcomePopup();
+        // Room manager will already have default slides loaded
+    }
+};
+
+// Global function to load PDF from file upload
+window.loadPDFFromFile = async function(fileInput) {
+    if (game && game.roomManager && fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        console.log('Loading PDF from uploaded file:', file.name);
+        
+        // Hide welcome popup if it's showing
+        if (game.welcomeShown) {
+            game.hideWelcomePopup();
+        }
+        
+        // Reset current PDF processor
+        game.roomManager.pdfProcessor.reset();
+        game.roomManager.isLoadingPDF = true;
+        
+        // Load PDF from file
+        const success = await game.roomManager.pdfProcessor.loadPDFFromFile(file);
+        
+        if (success) {
+            console.log('PDF uploaded successfully');
+        } else {
+            console.error('Failed to load uploaded PDF');
+            // Fall back to default slides
+            game.roomManager.generateDefaultRooms();
+        }
+        
+        game.roomManager.isLoadingPDF = false;
+        
+        // Clear the file input for future uploads
+        fileInput.value = '';
+    }
+};
+
 // Handle window resize
 window.addEventListener('resize', () => {
     if (game && game.canvas) {
-        // Keep canvas centered
-        const container = document.querySelector('.game-container');
-        if (container) {
-            const rect = container.getBoundingClientRect();
-            // Canvas size is fixed, but we can adjust container positioning if needed
-        }
+        // Update screen dimensions
+        game.screenWidth = window.innerWidth;
+        game.screenHeight = window.innerHeight;
+        game.canvas.width = game.screenWidth;
+        game.canvas.height = game.screenHeight;
+        
+        // Update room manager with new dimensions
+        game.roomManager.updateScreenDimensions(game.screenWidth, game.screenHeight);
     }
 });
 

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SlideScroller - PDF Instructions</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .highlight { background: yellow; padding: 2px 4px; }
+        .code { background: #f4f4f4; padding: 20px; border-left: 4px solid #ccc; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>SlideScroller PDF Integration</h1>
+    
+    <div class="warning">
+        <strong>📁 Two ways to use your PDF presentation:</strong><br>
+        
+        <h3>Method 1: File Upload (Recommended - No Setup Required)</h3>
+        <ol>
+            <li>Open the game in your browser</li>
+            <li>Click the <strong>"Upload PDF"</strong> button in the top-left corner</li>
+            <li>Select your PDF file</li>
+            <li>The game will process and display your slides automatically</li>
+        </ol>
+        
+        <h3>Method 2: Folder Method (Requires Local Server)</h3>
+        <ul>
+            <li>Save your PDF file in this <code>/presentation/</code> folder with one of these names:</li>
+            <ul>
+                <li><strong>presentation.pdf</strong> (recommended)</li>
+                <li>slides.pdf</li>
+                <li>slide.pdf</li>
+                <li>deck.pdf</li>
+                <li>talk.pdf</li>
+            </ul>
+            <li>Run a local server (see <a href="../SERVER_SETUP.md">SERVER_SETUP.md</a> for details)</li>
+        </ul>
+    </div>
+
+    <h2>Why Two Methods?</h2>
+    <div class="warning">
+        <strong>CORS Security Restriction:</strong> Modern browsers prevent websites from accessing local files directly for security reasons. This causes "CORS policy" errors when trying to load PDFs from the file system.
+        <br><br>
+        <strong>Solutions:</strong>
+        <ul>
+            <li><strong>File Upload:</strong> Works everywhere, no setup needed</li>
+            <li><strong>Local Server:</strong> Allows folder-based loading, requires server setup</li>
+        </ul>
+    </div>
+
+    <h2>Features:</h2>
+    <ul>
+        <li>✅ Supports up to 100 PDF pages/slides</li>
+        <li>✅ Works with password-protected PDFs</li>
+        <li>✅ High-quality rendering</li>
+        <li>✅ Automatic aspect ratio handling</li>
+        <li>✅ Fallback to default slides if no PDF found</li>
+    </ul>
+
+    <h2>How it works:</h2>
+    <ol>
+        <li>Place your PDF in the <code>/presentation/</code> folder</li>
+        <li>Start the game</li>
+        <li>The game will automatically detect and load your PDF</li>
+        <li>Each PDF page becomes a game room/slide</li>
+        <li>Navigate between slides using A/D keys</li>
+        <li>Click "Reload PDF" button to refresh after changing PDFs</li>
+    </ol>
+
+    <div class="code">
+        <strong>Supported PDF names:</strong><br>
+        ./presentation/presentation.pdf<br>
+        ./presentation/slides.pdf<br>
+        ./presentation/slide.pdf<br>
+        ./presentation/deck.pdf<br>
+        ./presentation/talk.pdf
+    </div>
+
+    <h2>Troubleshooting:</h2>
+    <ul>
+        <li><strong>CORS Errors:</strong> Use the "Upload PDF" button instead of the folder method</li>
+        <li><strong>PDF doesn't load:</strong> Check the browser console for errors</li>
+        <li><strong>For encrypted PDFs:</strong> You'll be prompted for the password</li>
+        <li><strong>Large PDFs:</strong> May take a moment to process</li>
+        <li><strong>No PDF found:</strong> The game uses built-in placeholder slides</li>
+        <li><strong>Server setup needed:</strong> See <a href="../SERVER_SETUP.md">SERVER_SETUP.md</a> for local server instructions</li>
+    </ul>
+
+    <p><a href="../index.html">← Back to Game</a></p>
+</body>
+</html>

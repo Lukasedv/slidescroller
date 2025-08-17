@@ -2,17 +2,17 @@ class Player {
     constructor(x, y) {
         this.position = new Vector2(x, y);
         this.velocity = new Vector2(0, 0);
-        this.size = new Vector2(32, 48);
+        this.size = new Vector2(64, 96); // Made character bigger (was 32x48)
         this.maxHealth = 100;
         this.health = this.maxHealth;
         
-        // Movement properties
-        this.speed = 300;
-        this.jumpPower = 500;
+        // Movement properties - increased speed for faster traversal
+        this.speed = 600; // Doubled from 300
+        this.jumpPower = 700; // Increased jump power
         this.gravity = 1200;
         this.groundDrag = 0.1;  // Lower value = less drag = more movement
         this.airDrag = 0.02;    // Very low air drag for better air control
-        this.isGrounded = false;
+        this.isGrounded = true; // Start grounded since no platforms
         this.coyoteTime = 0.1;
         this.coyoteTimer = 0;
         
@@ -122,85 +122,40 @@ class Player {
         const currentRoom = roomManager.getCurrentRoom();
         if (!currentRoom) return;
 
-        // Apply gravity
-        if (!this.isGrounded) {
-            this.velocity.y += this.gravity * deltaTime;
-        }
+        // Get screen dimensions from room manager
+        const screenHeight = roomManager.screenHeight || 800;
+        const groundLevel = screenHeight - 50; // Ground is 50 pixels from bottom
 
-        // Update coyote timer
-        if (!this.isGrounded) {
-            this.coyoteTimer -= deltaTime;
+        // Apply gravity only if not on ground
+        if (this.position.y < groundLevel - this.size.y) {
+            this.velocity.y += this.gravity * deltaTime;
+            this.isGrounded = false;
+        } else {
+            // On ground
+            this.position.y = groundLevel - this.size.y;
+            if (this.velocity.y > 0) {
+                this.velocity.y = 0;
+            }
+            this.isGrounded = true;
+            this.coyoteTimer = this.coyoteTime;
         }
 
         // Calculate next position
         const nextPosition = this.position.add(this.velocity.multiply(deltaTime));
         
-        // Collision detection and response
-        this.handleCollisions(nextPosition, currentRoom);
+        // Update position
+        this.position = nextPosition;
         
-        // Keep player in bounds (temporary, until room transitions)
-        this.position.x = clamp(this.position.x, 0, 1200 - this.size.x);
-        this.position.y = clamp(this.position.y, 0, 800 - this.size.y);
+        // Keep player in horizontal bounds for room transitions
+        const screenWidth = roomManager.screenWidth || 1200;
+        this.position.x = clamp(this.position.x, 0, screenWidth - this.size.x);
+        this.position.y = clamp(this.position.y, 0, screenHeight - this.size.y);
     }
 
     handleCollisions(nextPosition, room) {
-        // First, check if we're grounded by checking below current position
-        const groundCheckRect = new Rectangle(
-            this.position.x, this.position.y + this.size.y,
-            this.size.x, 2
-        );
-        const groundCollisions = room.checkCollisions(groundCheckRect);
-        this.isGrounded = groundCollisions.length > 0;
-
-        // Now handle movement collisions
-        // Check X movement first - but only check for actual wall collisions
-        const xRect = new Rectangle(
-            nextPosition.x, this.position.y,
-            this.size.x, this.size.y
-        );
-        
-        const xCollisions = room.checkCollisions(xRect);
-        if (xCollisions.length > 0) {
-            // Filter out collisions that are just the ground platform we're standing on
-            const wallCollisions = xCollisions.filter(collision => {
-                // If collision is below the player's center, it's likely a ground platform
-                return collision.y < this.position.y + this.size.y / 2;
-            });
-            
-            if (wallCollisions.length > 0) {
-                // Debug: log what we're colliding with
-                console.log('Wall Collision detected:', wallCollisions[0]);
-                console.log('Player trying to move from', this.position.x, 'to', nextPosition.x);
-                
-                // Hit a wall, stop horizontal movement
-                this.velocity.x = 0;
-                nextPosition.x = this.position.x;
-            }
-        }
-
-        // Check Y movement
-        const yRect = new Rectangle(
-            nextPosition.x, nextPosition.y,
-            this.size.x, this.size.y
-        );
-        
-        const yCollisions = room.checkCollisions(yRect);
-        if (yCollisions.length > 0) {
-            const collision = yCollisions[0];
-            
-            if (this.velocity.y > 0) {
-                // Falling - land on platform
-                nextPosition.y = collision.y - this.size.y;
-                this.velocity.y = 0;
-                this.isGrounded = true;
-                this.coyoteTimer = this.coyoteTime;
-            } else if (this.velocity.y < 0) {
-                // Jumping - hit ceiling
-                nextPosition.y = collision.y + collision.height;
-                this.velocity.y = 0;
-            }
-        }
-
+        // Simplified collision - no platforms needed
+        // Just keep player on the ground level
+        // This method is kept for compatibility but essentially does nothing now
         this.position = nextPosition;
     }
 
@@ -246,13 +201,16 @@ class Player {
         const currentRoom = roomManager.getCurrentRoom();
         if (!currentRoom) return;
 
+        // Get screen dimensions from room manager
+        const screenWidth = roomManager.screenWidth || 1200;
+
         // Check for room transitions at screen edges
         if (this.position.x <= 10 && this.velocity.x < 0) {
             // Try to transition left
             if (roomManager.startTransition('left', this)) {
                 this.startTransitionCooldown();
             }
-        } else if (this.position.x >= 1200 - this.size.x - 10 && this.velocity.x > 0) {
+        } else if (this.position.x >= screenWidth - this.size.x - 10 && this.velocity.x > 0) {
             // Try to transition right
             if (roomManager.startTransition('right', this)) {
                 this.startTransitionCooldown();

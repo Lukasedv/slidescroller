@@ -1,37 +1,21 @@
 class Room {
-    constructor(id, slideContent, backgroundColor = '#2a2a2a') {
+    constructor(id, slideContent, backgroundColor = '#2a2a2a', slideImage = null) {
         this.id = id;
         this.slideContent = slideContent;
         this.backgroundColor = backgroundColor;
-        this.platforms = [];
+        this.slideImage = slideImage; // PDF page image
+        this.platforms = []; // Keep empty array for compatibility
         this.enemies = [];
         this.items = [];
         this.leftTransition = null;
         this.rightTransition = null;
         
-        // Generate some basic platforms for each room
-        this.generatePlatforms();
+        // No platform generation needed anymore
     }
 
     generatePlatforms() {
-        // Ground platform
-        this.platforms.push(new Platform(0, 750, 1200, 50));
-        
-        // Generate some random platforms based on room ID
-        const seed = this.id;
-        const numPlatforms = 3 + (seed % 3);
-        
-        for (let i = 0; i < numPlatforms; i++) {
-            const x = 100 + (i * 250) + ((seed * 7) % 100);
-            const y = 500 - ((seed * 13 + i * 17) % 200);
-            const width = 150 + ((seed * 11 + i * 19) % 100);
-            
-            this.platforms.push(new Platform(x, y, width, 20));
-        }
-        
-        // Add some wall platforms for room boundaries
-        this.platforms.push(new Platform(-10, 0, 10, 800)); // Left wall
-        this.platforms.push(new Platform(1200, 0, 10, 800)); // Right wall
+        // No platforms needed - just keep method for compatibility
+        this.platforms = [];
     }
 
     update(deltaTime) {
@@ -41,46 +25,100 @@ class Room {
     }
 
     render(ctx) {
+        // Get current screen dimensions
+        const screenWidth = ctx.canvas.width;
+        const screenHeight = ctx.canvas.height;
+        
         // Clear and set background
         ctx.fillStyle = this.backgroundColor;
-        ctx.fillRect(0, 0, 1200, 800);
+        ctx.fillRect(0, 0, screenWidth, screenHeight);
         
-        // Render slide content as background
-        this.renderSlideBackground(ctx);
+        // Render slide content as prominent background
+        this.renderSlideBackground(ctx, screenWidth, screenHeight);
         
-        // Render platforms
-        ctx.fillStyle = '#666';
-        ctx.strokeStyle = '#888';
-        ctx.lineWidth = 2;
-        
-        this.platforms.forEach(platform => {
-            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-            ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
-        });
+        // Render simple ground line
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, screenHeight - 50, screenWidth, 50);
         
         // Render enemies and items
         this.enemies.forEach(enemy => enemy.render(ctx));
         this.items.forEach(item => item.render(ctx));
     }
 
-    renderSlideBackground(ctx) {
-        // Render slide content as a large background text
+    renderSlideBackground(ctx, screenWidth, screenHeight) {
         ctx.save();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.font = '120px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.slideContent, 600, 400);
         
-        // Add some decorative elements to simulate a slide
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        // Create a nice slide background with border
+        const margin = 80;
+        const slideWidth = screenWidth - (margin * 2);
+        const slideHeight = screenHeight - (margin * 2);
+        
+        // Slide background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillRect(margin, margin, slideWidth, slideHeight);
+        
+        // Slide border
+        ctx.strokeStyle = '#333';
         ctx.lineWidth = 4;
-        ctx.strokeRect(50, 50, 1100, 700);
+        ctx.strokeRect(margin, margin, slideWidth, slideHeight);
         
-        ctx.font = '24px Arial';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Room ${this.id} - ${this.slideContent}`, 70, 100);
+        // If we have a PDF slide image, render it
+        if (this.slideImage && this.slideImage.complete) {
+            // Calculate aspect ratios
+            const slideAspect = slideWidth / slideHeight;
+            const imageAspect = this.slideImage.width / this.slideImage.height;
+            
+            let drawWidth, drawHeight, drawX, drawY;
+            
+            if (imageAspect > slideAspect) {
+                // Image is wider than slide area
+                drawWidth = slideWidth - 40; // Leave some padding
+                drawHeight = drawWidth / imageAspect;
+                drawX = margin + 20;
+                drawY = margin + (slideHeight - drawHeight) / 2;
+            } else {
+                // Image is taller than slide area
+                drawHeight = slideHeight - 40; // Leave some padding
+                drawWidth = drawHeight * imageAspect;
+                drawX = margin + (slideWidth - drawWidth) / 2;
+                drawY = margin + 20;
+            }
+            
+            // Draw the PDF page image
+            ctx.drawImage(this.slideImage, drawX, drawY, drawWidth, drawHeight);
+            
+            // Add slide number overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(margin + 10, margin + 10, 80, 30);
+            ctx.fillStyle = '#fff';
+            ctx.font = `${Math.min(screenWidth, screenHeight) * 0.02}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${this.id}`, margin + 50, margin + 25);
+            
+        } else {
+            // Fallback to text-based slide (original behavior)
+            ctx.fillStyle = '#333';
+            ctx.font = `${Math.min(screenWidth, screenHeight) * 0.08}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.slideContent, screenWidth / 2, screenHeight / 2);
+            
+            // Room number in top-left of slide
+            ctx.font = `${Math.min(screenWidth, screenHeight) * 0.03}px Arial`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`Slide ${this.id}`, margin + 30, margin + 30);
+            
+            // Add some decorative elements
+            const lineY = screenHeight / 2 + Math.min(screenWidth, screenHeight) * 0.06;
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(margin + 60, lineY);
+            ctx.lineTo(screenWidth - margin - 60, lineY);
+            ctx.stroke();
+        }
         
         ctx.restore();
     }
@@ -130,19 +168,95 @@ class RoomManager {
         this.transitionDirection = null;
         this.nextRoom = null;
         
-        this.generateRooms();
+        // Screen dimensions
+        this.screenWidth = 1200; // Default values
+        this.screenHeight = 800;
+        
+        // PDF processing
+        this.pdfProcessor = new PDFProcessor();
+        this.isLoadingPDF = false;
+        this.pdfLoadingProgress = 0;
+        this.pdfLoadingMessage = '';
+        
+        // Start with default slides, don't auto-load PDF
+        this.generateDefaultRooms();
+        this.setupPDFProcessor();
     }
 
-    generateRooms() {
+    setupPDFProcessor() {
+        // Set up PDF processor callbacks without auto-loading
+        this.pdfProcessor.onProgress((progress, message) => {
+            this.pdfLoadingProgress = progress;
+            this.pdfLoadingMessage = message;
+        });
+        
+        this.pdfProcessor.onLoad((pageImages) => {
+            console.log(`PDF loaded with ${pageImages.length} pages`);
+            this.generateRoomsFromPDF(pageImages);
+            this.isLoadingPDF = false;
+        });
+    }
+
+    updateScreenDimensions(width, height) {
+        this.screenWidth = width;
+        this.screenHeight = height;
+    }
+
+    generateRoomsFromPDF(pageImages) {
+        this.rooms.clear();
+        
+        const colors = [
+            '#2a4a6b',  // Blue
+            '#6b2a4a',  // Red
+            '#4a6b2a',  // Green
+            '#6b4a2a',  // Brown
+            '#4a2a6b',  // Purple
+            '#6b6b2a',  // Olive
+            '#2a6b6b',  // Teal
+            '#6b4a6b',  // Magenta
+            '#4a6b4a',  // Forest
+            '#6b6b4a'   // Mustard
+        ];
+
+        // Create rooms from PDF pages
+        for (let i = 0; i < pageImages.length; i++) {
+            const pageImage = pageImages[i];
+            const slideContent = `PDF Slide ${i + 1}`;
+            const backgroundColor = colors[i % colors.length];
+            
+            const room = new Room(i + 1, slideContent, backgroundColor, pageImage);
+            this.rooms.set(i + 1, room);
+        }
+
+        // Set up room transitions
+        for (let i = 1; i <= pageImages.length; i++) {
+            const room = this.rooms.get(i);
+            const leftRoom = i > 1 ? i - 1 : null;
+            const rightRoom = i < pageImages.length ? i + 1 : null;
+            room.setTransitions(leftRoom, rightRoom);
+        }
+
+        // Start in the first room
+        this.currentRoom = this.rooms.get(1);
+        console.log(`Generated ${pageImages.length} rooms from PDF`);
+    }
+
+    generateDefaultRooms() {
+        this.rooms.clear();
+        
         // Create a series of connected rooms with slide-like content
         const slideContents = [
-            "Welcome Slide",
-            "Game Mechanics",
-            "Player Movement",
-            "Combat System",
-            "Room Transitions",
-            "Boss Fight",
-            "Victory Screen"
+            "Welcome to SlideScroller!",
+            "Upload Your PDF Presentation", 
+            "Navigate with A/D Keys",
+            "Jump with W Key",
+            "Attack with Spacebar",
+            "Supports 100+ Slides",
+            "Password PDFs Supported",
+            "Fullscreen Experience",
+            "Upload PDF Anytime",
+            "Demo Slide #10",
+            "Thanks for Playing!"
         ];
 
         const colors = [
@@ -152,7 +266,11 @@ class RoomManager {
             '#6b4a2a',  // Brown
             '#4a2a6b',  // Purple
             '#6b6b2a',  // Olive
-            '#2a6b6b'   // Teal
+            '#2a6b6b',  // Teal
+            '#6b4a6b',  // Magenta
+            '#4a6b4a',  // Forest
+            '#6b6b4a',  // Mustard
+            '#4a4a6b'   // Navy
         ];
 
         for (let i = 0; i < slideContents.length; i++) {
@@ -172,7 +290,18 @@ class RoomManager {
         this.currentRoom = this.rooms.get(1);
     }
 
-    update(deltaTime) {
+    generateRooms() {
+        // This method is kept for compatibility but now handled by initializePDF
+        this.generateDefaultRooms();
+    }
+
+    update(deltaTime, screenWidth, screenHeight) {
+        // Update screen dimensions if provided
+        if (screenWidth && screenHeight) {
+            this.screenWidth = screenWidth;
+            this.screenHeight = screenHeight;
+        }
+        
         if (this.isTransitioning) {
             this.transitionProgress += this.transitionSpeed * deltaTime;
             
@@ -187,17 +316,56 @@ class RoomManager {
     }
 
     render(ctx) {
-        if (this.isTransitioning && this.nextRoom) {
+        if (this.isLoadingPDF) {
+            this.renderLoadingScreen(ctx);
+        } else if (this.isTransitioning && this.nextRoom) {
             this.renderTransition(ctx);
         } else if (this.currentRoom) {
             this.currentRoom.render(ctx);
         }
     }
 
+    renderLoadingScreen(ctx) {
+        const screenWidth = ctx.canvas.width;
+        const screenHeight = ctx.canvas.height;
+        
+        // Dark background
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(0, 0, screenWidth, screenHeight);
+        
+        // Loading text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${Math.min(screenWidth, screenHeight) * 0.05}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Loading Presentation...', screenWidth / 2, screenHeight / 2 - 60);
+        
+        // Progress bar background
+        const barWidth = Math.min(400, screenWidth * 0.6);
+        const barHeight = 20;
+        const barX = (screenWidth - barWidth) / 2;
+        const barY = screenHeight / 2;
+        
+        ctx.fillStyle = '#333';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Progress bar fill
+        const fillWidth = (this.pdfLoadingProgress / 100) * barWidth;
+        ctx.fillStyle = '#4CAF50';
+        ctx.fillRect(barX, barY, fillWidth, barHeight);
+        
+        // Progress text
+        ctx.font = `${Math.min(screenWidth, screenHeight) * 0.025}px Arial`;
+        ctx.fillStyle = '#ccc';
+        ctx.fillText(this.pdfLoadingMessage, screenWidth / 2, screenHeight / 2 + 50);
+        ctx.fillText(`${Math.round(this.pdfLoadingProgress)}%`, screenWidth / 2, screenHeight / 2 + 80);
+    }
+
     renderTransition(ctx) {
         const progress = this.transitionProgress;
+        const screenWidth = ctx.canvas.width;
         const offset = this.transitionDirection === 'right' ? 
-            -1200 * progress : 1200 * progress;
+            -screenWidth * progress : screenWidth * progress;
         
         ctx.save();
         
@@ -207,7 +375,7 @@ class RoomManager {
         
         // Render next room
         const nextOffset = this.transitionDirection === 'right' ? 
-            1200 : -1200;
+            screenWidth : -screenWidth;
         ctx.translate(nextOffset, 0);
         this.nextRoom.render(ctx);
         
@@ -231,7 +399,7 @@ class RoomManager {
         if (direction === 'right') {
             player.position.x = 50;
         } else {
-            player.position.x = 1150;
+            player.position.x = this.screenWidth - 100; // Use screen width instead of hardcoded value
         }
         
         return true;
@@ -251,5 +419,38 @@ class RoomManager {
 
     getCurrentRoom() {
         return this.currentRoom;
+    }
+
+    /**
+     * Reload PDF presentation
+     */
+    async reloadPDF() {
+        console.log('Reloading PDF presentation...');
+        this.pdfProcessor.reset();
+        await this.initializePDF();
+    }
+
+    /**
+     * Check if PDF is currently loading
+     */
+    isLoadingPresentation() {
+        return this.isLoadingPDF;
+    }
+
+    /**
+     * Get PDF loading progress
+     */
+    getLoadingProgress() {
+        return {
+            progress: this.pdfLoadingProgress,
+            message: this.pdfLoadingMessage
+        };
+    }
+
+    /**
+     * Get total number of rooms/slides
+     */
+    getTotalRooms() {
+        return this.rooms.size;
     }
 }

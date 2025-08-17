@@ -8,19 +8,65 @@
 </head>
 <body>
     <div class="game-container">
-        <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        <canvas id="gameCanvas"></canvas>
         <div class="ui-overlay">
             <div class="health-bar">
                 <div class="health-fill" id="healthFill"></div>
             </div>
             <div class="room-indicator" id="roomIndicator">Room 1</div>
+            <div class="pdf-info" id="pdfInfo">
+                <div class="pdf-status" id="pdfStatus">No PDF loaded</div>
+                <div class="pdf-controls">
+                    <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" onchange="loadPDFFromFile(this)">
+                    <button class="upload-pdf-btn" onclick="document.getElementById('pdfFileInput').click()">Upload PDF</button>
+                </div>
+            </div>
         </div>
+        
+        <!-- Welcome PDF Upload Popup -->
+        <div class="pdf-welcome-overlay" id="pdfWelcomeOverlay">
+            <div class="pdf-welcome-popup">
+                <h2>Welcome to SlideScroller!</h2>
+                <p>Transform your PDF presentation into an interactive game experience.</p>
+                
+                <div class="upload-section">
+                    <button class="upload-pdf-btn-large" onclick="document.getElementById('pdfFileInput').click()">
+                        📄 Upload Your PDF
+                    </button>
+                    <p class="upload-help">Select your presentation PDF to get started</p>
+                </div>
+                
+                <div class="or-divider">
+                    <span>or</span>
+                </div>
+                
+                <div class="continue-section">
+                    <button class="continue-btn" onclick="continueWithoutPDF()">
+                        🎮 Continue with Demo Slides
+                    </button>
+                    <p class="continue-help">Use built-in placeholder slides</p>
+                </div>
+                
+                <div class="features-preview">
+                    <h3>Features:</h3>
+                    <ul>
+                        <li>✅ Navigate slides with A/D keys</li>
+                        <li>✅ Up to 100 PDF pages supported</li>
+                        <li>✅ Password-protected PDFs supported</li>
+                        <li>✅ Fullscreen presentation experience</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
         <div class="controls-help">
             <p>Controls: A/D - Move, W - Jump, Space - Attack</p>
+            <p>Upload your PDF presentation to turn it into an interactive game!</p>
         </div>
     </div>
     
     <script src="js/utils.js"></script>
+    <script src="js/pdf-processor.js"></script>
     <script src="js/weapons.js"></script>
     <script src="js/room.js"></script>
     <script src="js/player.js"></script>
