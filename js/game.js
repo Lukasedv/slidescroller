@@ -29,7 +29,8 @@ class Game {
         this.canvas.width = this.screenWidth;
         this.canvas.height = this.screenHeight;
         
-        // Disable image smoothing for pixel-perfect rendering
+        // Disable image smoothing for game elements (player, weapons, etc.)
+        // Slide backgrounds will override this setting temporarily
         this.ctx.imageSmoothingEnabled = false;
         
         // Show welcome popup before starting
@@ -41,6 +42,7 @@ class Game {
         console.log('SlideScroller Game initialized!');
         console.log('Controls: A/D - Move, W - Jump, Space - Attack');
         console.log(`Screen size: ${this.screenWidth}x${this.screenHeight}`);
+        console.log(`Device pixel ratio: ${window.devicePixelRatio || 1}`);
     }
 
     showWelcomePopup() {

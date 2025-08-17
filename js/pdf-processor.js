@@ -253,8 +253,27 @@ class PDFProcessor {
     async convertPageToImage(pageNumber) {
         const page = await this.pdfDocument.getPage(pageNumber);
         
-        // Calculate scale for good quality while keeping reasonable size
-        const scale = 2.0;
+        // Calculate scale based on screen resolution for high-quality rendering
+        // For 4K screens (3840x2160), use higher scale
+        const screenWidth = window.innerWidth || 1920;
+        const screenHeight = window.innerHeight || 1080;
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        
+        // Base scale calculation for optimal quality
+        let scale = 3.0; // Minimum for good quality
+        
+        // Increase scale for high-resolution displays
+        if (screenWidth >= 3840 || screenHeight >= 2160) {
+            scale = 6.0; // 4K resolution
+        } else if (screenWidth >= 2560 || screenHeight >= 1440) {
+            scale = 4.5; // 1440p resolution
+        } else if (screenWidth >= 1920 || screenHeight >= 1080) {
+            scale = 4.0; // 1080p resolution
+        }
+        
+        // Apply device pixel ratio for Retina displays
+        scale *= devicePixelRatio;
+        
         const viewport = page.getViewport({ scale });
 
         // Create canvas to render the page
@@ -262,6 +281,10 @@ class PDFProcessor {
         const context = canvas.getContext('2d');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+        
+        // Enable high-quality rendering
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
 
         // Render page to canvas
         const renderContext = {
@@ -271,8 +294,8 @@ class PDFProcessor {
 
         await page.render(renderContext).promise;
 
-        // Convert canvas to image data URL
-        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        // Convert canvas to image data URL with maximum quality
+        const imageDataUrl = canvas.toDataURL('image/png'); // Use PNG for better quality
         
         // Create image object
         const img = new Image();

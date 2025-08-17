@@ -48,6 +48,12 @@ class Room {
     renderSlideBackground(ctx, screenWidth, screenHeight) {
         ctx.save();
         
+        // Enable high-quality image smoothing for slide backgrounds
+        const originalSmoothing = ctx.imageSmoothingEnabled;
+        const originalQuality = ctx.imageSmoothingQuality;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
         // Use full screen for slides - no margins or borders
         const slideWidth = screenWidth;
         const slideHeight = screenHeight;
@@ -74,8 +80,12 @@ class Room {
                 drawY = (slideHeight - drawHeight) / 2; // Center vertically
             }
             
-            // Draw the PDF page image filling the screen
+            // Draw the PDF page image filling the screen with high quality
             ctx.drawImage(this.slideImage, drawX, drawY, drawWidth, drawHeight);
+            
+            // Restore original smoothing settings for other game elements
+            ctx.imageSmoothingEnabled = originalSmoothing;
+            ctx.imageSmoothingQuality = originalQuality;
             
             // Add slide number overlay in top-right corner
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
