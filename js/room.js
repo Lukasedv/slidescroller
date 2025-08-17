@@ -48,75 +48,70 @@ class Room {
     renderSlideBackground(ctx, screenWidth, screenHeight) {
         ctx.save();
         
-        // Create a nice slide background with border
-        const margin = 80;
-        const slideWidth = screenWidth - (margin * 2);
-        const slideHeight = screenHeight - (margin * 2);
-        
-        // Slide background
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-        ctx.fillRect(margin, margin, slideWidth, slideHeight);
-        
-        // Slide border
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(margin, margin, slideWidth, slideHeight);
+        // Use full screen for slides - no margins or borders
+        const slideWidth = screenWidth;
+        const slideHeight = screenHeight;
         
         // If we have a PDF slide image, render it
         if (this.slideImage && this.slideImage.complete) {
-            // Calculate aspect ratios
+            // Calculate aspect ratios to fill the entire screen
             const slideAspect = slideWidth / slideHeight;
             const imageAspect = this.slideImage.width / this.slideImage.height;
             
             let drawWidth, drawHeight, drawX, drawY;
             
             if (imageAspect > slideAspect) {
-                // Image is wider than slide area
-                drawWidth = slideWidth - 40; // Leave some padding
-                drawHeight = drawWidth / imageAspect;
-                drawX = margin + 20;
-                drawY = margin + (slideHeight - drawHeight) / 2;
-            } else {
-                // Image is taller than slide area
-                drawHeight = slideHeight - 40; // Leave some padding
+                // Image is wider than screen - scale to fill height
+                drawHeight = slideHeight;
                 drawWidth = drawHeight * imageAspect;
-                drawX = margin + (slideWidth - drawWidth) / 2;
-                drawY = margin + 20;
+                drawX = (slideWidth - drawWidth) / 2; // Center horizontally
+                drawY = 0;
+            } else {
+                // Image is taller than screen - scale to fill width
+                drawWidth = slideWidth;
+                drawHeight = drawWidth / imageAspect;
+                drawX = 0;
+                drawY = (slideHeight - drawHeight) / 2; // Center vertically
             }
             
-            // Draw the PDF page image
+            // Draw the PDF page image filling the screen
             ctx.drawImage(this.slideImage, drawX, drawY, drawWidth, drawHeight);
             
-            // Add slide number overlay
+            // Add slide number overlay in top-right corner
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(margin + 10, margin + 10, 80, 30);
+            ctx.fillRect(screenWidth - 90, 10, 80, 30);
             ctx.fillStyle = '#fff';
             ctx.font = `${Math.min(screenWidth, screenHeight) * 0.02}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(`${this.id}`, margin + 50, margin + 25);
+            ctx.fillText(`${this.id}`, screenWidth - 50, 25);
             
         } else {
-            // Fallback to text-based slide (original behavior)
+            // Fallback to text-based slide (original behavior) - also full screen
+            ctx.fillStyle = this.backgroundColor;
+            ctx.fillRect(0, 0, screenWidth, screenHeight);
+            
+            // Main slide content - large and centered
             ctx.fillStyle = '#333';
             ctx.font = `${Math.min(screenWidth, screenHeight) * 0.08}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(this.slideContent, screenWidth / 2, screenHeight / 2);
             
-            // Room number in top-left of slide
+            // Slide number in top-right corner
             ctx.font = `${Math.min(screenWidth, screenHeight) * 0.03}px Arial`;
-            ctx.textAlign = 'left';
+            ctx.textAlign = 'right';
             ctx.textBaseline = 'top';
-            ctx.fillText(`Slide ${this.id}`, margin + 30, margin + 30);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillText(`Slide ${this.id}`, screenWidth - 30, 30);
             
             // Add some decorative elements
             const lineY = screenHeight / 2 + Math.min(screenWidth, screenHeight) * 0.06;
             ctx.strokeStyle = '#666';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(margin + 60, lineY);
-            ctx.lineTo(screenWidth - margin - 60, lineY);
+            ctx.moveTo(60, lineY);
+            ctx.lineTo(screenWidth - 60, lineY);
             ctx.stroke();
         }
         

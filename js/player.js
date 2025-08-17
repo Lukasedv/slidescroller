@@ -296,38 +296,62 @@ class Player {
             ctx.fill();
         }
 
+        // Draw player outline/contour for visibility on any background
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(this.position.x - 1, this.position.y - 1, this.size.x + 2, this.size.y + 2);
+        
+        // Draw inner white outline for extra contrast
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.position.x - 0.5, this.position.y - 0.5, this.size.x + 1, this.size.y + 1);
+
         // Draw player body with Microsoft logo
         ctx.fillStyle = '#ffffff'; // Always white, no color change when attacking
         ctx.fillRect(this.position.x, this.position.y, this.size.x, this.size.y);
         
         // Draw Microsoft logo (4 colored squares)
-        const logoSize = 6;
+        const logoSize = 8; // Slightly larger for better visibility
         const logoSpacing = 1;
         const logoStartX = this.position.x + (this.size.x - (logoSize * 2 + logoSpacing)) / 2;
         const logoStartY = this.position.y + (this.size.y - (logoSize * 2 + logoSpacing)) / 2 + 8;
         
-        // Top-left square (red)
+        // Top-left square (red) - with outline
         ctx.fillStyle = '#f35325';
         ctx.fillRect(logoStartX, logoStartY, logoSize, logoSize);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(logoStartX, logoStartY, logoSize, logoSize);
         
-        // Top-right square (green)
+        // Top-right square (green) - with outline
         ctx.fillStyle = '#81bc06';
         ctx.fillRect(logoStartX + logoSize + logoSpacing, logoStartY, logoSize, logoSize);
+        ctx.strokeRect(logoStartX + logoSize + logoSpacing, logoStartY, logoSize, logoSize);
         
-        // Bottom-left square (blue)
+        // Bottom-left square (blue) - with outline
         ctx.fillStyle = '#05a6f0';
         ctx.fillRect(logoStartX, logoStartY + logoSize + logoSpacing, logoSize, logoSize);
+        ctx.strokeRect(logoStartX, logoStartY + logoSize + logoSpacing, logoSize, logoSize);
         
-        // Bottom-right square (yellow)
+        // Bottom-right square (yellow) - with outline
         ctx.fillStyle = '#ffba08';
         ctx.fillRect(logoStartX + logoSize + logoSpacing, logoStartY + logoSize + logoSpacing, logoSize, logoSize);
+        ctx.strokeRect(logoStartX + logoSize + logoSpacing, logoStartY + logoSize + logoSpacing, logoSize, logoSize);
         
-        // Draw player face direction indicator
+        // Draw player face direction indicator with outline
         ctx.fillStyle = '#2E7D32';
-        const eyeX = this.position.x + (this.facing > 0 ? this.size.x - 8 : 4);
-        const eyeY = this.position.y + 8;
+        const eyeX = this.position.x + (this.facing > 0 ? this.size.x - 10 : 6);
+        const eyeY = this.position.y + 10;
+        
+        // Eyes with black outline
         ctx.fillRect(eyeX, eyeY, 4, 4);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(eyeX, eyeY, 4, 4);
+        
+        ctx.fillStyle = '#2E7D32';
         ctx.fillRect(eyeX, eyeY + 8, 4, 4);
+        ctx.strokeRect(eyeX, eyeY + 8, 4, 4);
 
         // Draw current weapon on player
         const currentWeapon = this.weaponManager.getCurrentWeapon();
@@ -341,11 +365,14 @@ class Player {
             currentWeapon.renderAttack(ctx, this, attackProgress);
         }
 
-        // Draw movement indicator
+        // Draw enhanced movement indicator with outline
         if (Math.abs(this.velocity.x) > 10) {
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(this.position.x - 2, this.position.y - 2, this.size.x + 4, this.size.y + 4);
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(this.position.x - 1, this.position.y - 1, this.size.x + 2, this.size.y + 2);
+            ctx.lineWidth = 1;
+            ctx.strokeRect(this.position.x - 1.5, this.position.y - 1.5, this.size.x + 3, this.size.y + 3);
         }
 
         // Draw grounded indicator
