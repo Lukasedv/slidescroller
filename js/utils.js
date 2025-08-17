@@ -65,6 +65,10 @@ class InputManager {
         
         window.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
+            // Debug: Log key codes for debugging
+            if (e.code.includes('Space') || e.key === ' ') {
+                console.log('Space key detected:', e.code, e.key);
+            }
         });
         
         window.addEventListener('keyup', (e) => {

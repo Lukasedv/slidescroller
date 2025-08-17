@@ -16,14 +16,11 @@ class Player {
         this.coyoteTime = 0.1;
         this.coyoteTimer = 0;
         
-        // Combat properties
+        // Weapon system
+        this.weaponManager = new WeaponManager();
         this.isAttacking = false;
-        this.attackDuration = 0.3;
         this.attackTimer = 0;
-        this.attackCooldown = 0.5;
         this.attackCooldownTimer = 0;
-        this.attackRange = 60;
-        this.attackDamage = 25;
         
         // Animation properties
         this.facing = 1; // 1 for right, -1 for left
@@ -37,6 +34,9 @@ class Player {
         
         // Jump debounce
         this.jumpPressed = false;
+        
+        // Attack debounce  
+        this.spacePressed = false;
     }
 
     update(deltaTime, roomManager, inputManager) {
@@ -103,9 +103,18 @@ class Player {
             this.jumpPressed = false;
         }
 
-        // Attacking
-        if (inputManager.wasJustPressed('Space') && this.attackCooldownTimer <= 0 && !this.isAttacking) {
+        // Attacking - using manual debounce like jumping
+        const spacePressed = inputManager.isPressed('Space');
+        
+        if (spacePressed && !this.spacePressed && this.attackCooldownTimer <= 0 && !this.isAttacking) {
+            console.log('Attack triggered!');
             this.startAttack();
+            this.spacePressed = true; // Mark as pressed to prevent repeated attacks
+        }
+        
+        // Reset attack pressed when key is released
+        if (!spacePressed) {
+            this.spacePressed = false;
         }
     }
 
@@ -196,11 +205,14 @@ class Player {
     }
 
     updateCombat(deltaTime) {
+        const currentWeapon = this.weaponManager.getCurrentWeapon();
+        
         if (this.isAttacking) {
             this.attackTimer -= deltaTime;
             if (this.attackTimer <= 0) {
+                console.log('Attack finished');
                 this.isAttacking = false;
-                this.attackCooldownTimer = this.attackCooldown;
+                this.attackCooldownTimer = currentWeapon.attackCooldown;
             }
         }
 
@@ -254,16 +266,26 @@ class Player {
     }
 
     startAttack() {
+        const currentWeapon = this.weaponManager.getCurrentWeapon();
+        console.log(`Starting attack with ${currentWeapon.name}!`);
+        
         this.isAttacking = true;
-        this.attackTimer = this.attackDuration;
+        this.attackTimer = currentWeapon.attackDuration;
         
         // Create attack hitbox and check for enemies
         const attackRect = new Rectangle(
-            this.position.x + (this.facing > 0 ? this.size.x : -this.attackRange),
+            this.position.x + (this.facing > 0 ? this.size.x : -currentWeapon.range),
             this.position.y,
-            this.attackRange,
+            currentWeapon.range,
             this.size.y
         );
+
+        // Call weapon-specific attack logic
+        currentWeapon.onAttackStart(this);
+
+        console.log('Attack rect:', attackRect);
+        console.log('Attack timer set to:', this.attackTimer);
+        console.log('Is attacking:', this.isAttacking);
 
         // TODO: Check for enemies in attack range and deal damage
     }
@@ -288,6 +310,19 @@ class Player {
         this.health = Math.min(this.maxHealth, this.health + amount);
     }
 
+    // Weapon management methods
+    switchWeapon(weaponId) {
+        return this.weaponManager.switchWeapon(weaponId);
+    }
+
+    getCurrentWeapon() {
+        return this.weaponManager.getCurrentWeapon();
+    }
+
+    addWeapon(weaponId, weapon) {
+        this.weaponManager.addWeapon(weaponId, weapon);
+    }
+
     render(ctx) {
         ctx.save();
         
@@ -303,9 +338,31 @@ class Player {
             ctx.fill();
         }
 
-        // Draw player body
-        ctx.fillStyle = this.isAttacking ? '#ff6666' : '#4CAF50';
+        // Draw player body with Microsoft logo
+        ctx.fillStyle = '#ffffff'; // Always white, no color change when attacking
         ctx.fillRect(this.position.x, this.position.y, this.size.x, this.size.y);
+        
+        // Draw Microsoft logo (4 colored squares)
+        const logoSize = 6;
+        const logoSpacing = 1;
+        const logoStartX = this.position.x + (this.size.x - (logoSize * 2 + logoSpacing)) / 2;
+        const logoStartY = this.position.y + (this.size.y - (logoSize * 2 + logoSpacing)) / 2 + 8;
+        
+        // Top-left square (red)
+        ctx.fillStyle = '#f35325';
+        ctx.fillRect(logoStartX, logoStartY, logoSize, logoSize);
+        
+        // Top-right square (green)
+        ctx.fillStyle = '#81bc06';
+        ctx.fillRect(logoStartX + logoSize + logoSpacing, logoStartY, logoSize, logoSize);
+        
+        // Bottom-left square (blue)
+        ctx.fillStyle = '#05a6f0';
+        ctx.fillRect(logoStartX, logoStartY + logoSize + logoSpacing, logoSize, logoSize);
+        
+        // Bottom-right square (yellow)
+        ctx.fillStyle = '#ffba08';
+        ctx.fillRect(logoStartX + logoSize + logoSpacing, logoStartY + logoSize + logoSpacing, logoSize, logoSize);
         
         // Draw player face direction indicator
         ctx.fillStyle = '#2E7D32';
@@ -314,12 +371,16 @@ class Player {
         ctx.fillRect(eyeX, eyeY, 4, 4);
         ctx.fillRect(eyeX, eyeY + 8, 4, 4);
 
-        // Draw attack indicator
+        // Draw current weapon on player
+        const currentWeapon = this.weaponManager.getCurrentWeapon();
+        if (!this.isAttacking) {
+            currentWeapon.renderOnPlayer(ctx, this);
+        }
+
+        // Draw weapon attack animation when attacking
         if (this.isAttacking) {
-            ctx.strokeStyle = '#ff0000';
-            ctx.lineWidth = 3;
-            const attackX = this.position.x + (this.facing > 0 ? this.size.x : -this.attackRange);
-            ctx.strokeRect(attackX, this.position.y, this.attackRange, this.size.y);
+            const attackProgress = 1 - (this.attackTimer / currentWeapon.attackDuration);
+            currentWeapon.renderAttack(ctx, this, attackProgress);
         }
 
         // Draw movement indicator
