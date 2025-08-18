@@ -249,12 +249,8 @@ class Player {
     }
 
     updateHealth() {
-        // Update health bar
-        const healthPercent = this.health / this.maxHealth;
-        const healthFill = document.getElementById('healthFill');
-        if (healthFill) {
-            healthFill.style.width = `${healthPercent * 100}%`;
-        }
+        // Health bar is now rendered directly on canvas in render() method
+        // No DOM manipulation needed
     }
 
     takeDamage(amount) {
@@ -379,6 +375,38 @@ class Player {
         if (this.isGrounded) {
             ctx.fillStyle = '#00ff00';
             ctx.fillRect(this.position.x + this.size.x / 2 - 2, this.position.y - 8, 4, 4);
+        }
+
+        // Draw health bar above player (only when missing health)
+        if (this.health < this.maxHealth) {
+            const healthBarWidth = 40;
+            const healthBarHeight = 6;
+            const healthBarX = this.position.x + this.size.x / 2 - healthBarWidth / 2;
+            const healthBarY = this.position.y - 20;
+            const healthPercent = this.health / this.maxHealth;
+
+            // Health bar background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(healthBarX - 1, healthBarY - 1, healthBarWidth + 2, healthBarHeight + 2);
+            
+            // Health bar border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+            
+            // Health bar fill
+            const fillWidth = healthBarWidth * healthPercent;
+            let healthColor;
+            if (healthPercent > 0.6) {
+                healthColor = '#4CAF50'; // Green
+            } else if (healthPercent > 0.3) {
+                healthColor = '#FF9800'; // Orange
+            } else {
+                healthColor = '#F44336'; // Red
+            }
+            
+            ctx.fillStyle = healthColor;
+            ctx.fillRect(healthBarX, healthBarY, fillWidth, healthBarHeight);
         }
 
         ctx.restore();

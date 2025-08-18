@@ -20,6 +20,7 @@ class Game {
         this.gameStarted = false;
         this.pausedByFocusLoss = false; // Track if paused by tab switching
         this.welcomeShown = false;
+        this.controlsStartTime = null;
         
         this.init();
     }
@@ -61,6 +62,22 @@ class Game {
         this.isPaused = false;
         this.gameStarted = true;
         this.welcomeShown = false;
+        
+        // Start timer to fade out controls help
+        this.controlsStartTime = performance.now();
+        
+        // Show controls help with fadeout animation
+        const controlsHelp = document.querySelector('.controls-help');
+        if (controlsHelp) {
+            controlsHelp.classList.add('visible');
+            setTimeout(() => {
+                controlsHelp.classList.add('fade-out');
+                // Remove from DOM after fade completes
+                setTimeout(() => {
+                    controlsHelp.style.display = 'none';
+                }, 1000);
+            }, 3000); // Start fade after 3 seconds
+        }
     }
 
     start() {
@@ -93,6 +110,14 @@ class Game {
         if (this.inputManager.wasJustPressed('Escape') && !this.pausedByFocusLoss) {
             this.togglePause();
         }
+        
+        // Debug keys (commented out for production)
+        // if (this.inputManager.wasJustPressed('KeyH')) {
+        //     this.player.takeDamage(10);
+        // }
+        // if (this.inputManager.wasJustPressed('KeyG')) {
+        //     this.player.heal(10);
+        // }
         
         // Update game systems
         this.roomManager.update(this.deltaTime, this.screenWidth, this.screenHeight);
@@ -147,43 +172,10 @@ class Game {
         // Render player
         this.player.render(this.ctx);
         
-        // Render UI overlays
-        this.renderDebugInfo();
-        
         // Only show pause menu for manual pause, not focus loss pause
         if (this.isPaused && !this.pausedByFocusLoss) {
             this.renderPauseMenu();
         }
-    }
-
-    renderDebugInfo() {
-        // Render debug information in top-right corner
-        this.ctx.save();
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        this.ctx.fillRect(this.screenWidth - 200, 10, 190, 140);
-        
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '12px monospace';
-        this.ctx.textAlign = 'left';
-        
-        const player = this.player;
-        const debugLines = [
-            `FPS: ${Math.round(1 / this.deltaTime)}`,
-            `Position: ${Math.round(player.position.x)}, ${Math.round(player.position.y)}`,
-            `Velocity: ${Math.round(player.velocity.x)}, ${Math.round(player.velocity.y)}`,
-            `Grounded: ${player.isGrounded}`,
-            `Health: ${player.health}/${player.maxHealth}`,
-            `Slide: ${this.roomManager.getCurrentRoom()?.id || 'None'}/${this.roomManager.getTotalRooms()}`,
-            `Transitioning: ${this.roomManager.isTransitioning}`,
-            `Can Transition: ${player.canTransition}`,
-            `PDF Status: ${this.roomManager.pdfProcessor?.isReady() ? 'Loaded' : 'Default'}`
-        ];
-        
-        debugLines.forEach((line, index) => {
-            this.ctx.fillText(line, this.screenWidth - 190, 30 + index * 14);
-        });
-        
-        this.ctx.restore();
     }
 
     renderPauseMenu() {

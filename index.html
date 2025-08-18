@@ -10,15 +10,20 @@
     <div class="game-container">
         <canvas id="gameCanvas"></canvas>
         <div class="ui-overlay">
-            <div class="health-bar">
-                <div class="health-fill" id="healthFill"></div>
-            </div>
-            <div class="room-indicator" id="roomIndicator">Room 1</div>
-            <div class="pdf-info" id="pdfInfo">
-                <div class="pdf-status" id="pdfStatus">No PDF loaded</div>
-                <div class="pdf-controls">
-                    <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" onchange="loadPDFFromFile(this)">
-                    <button class="upload-pdf-btn" onclick="document.getElementById('pdfFileInput').click()">Upload PDF</button>
+            <!-- Health bar is now rendered directly on canvas above player -->
+        </div>
+        
+        <!-- Subtle UI Controls Dropdown -->
+        <div class="ui-dropdown">
+            <button class="ui-dropdown-btn" id="uiDropdownBtn">⚙️</button>
+            <div class="ui-dropdown-content" id="uiDropdownContent">
+                <div class="room-indicator" id="roomIndicator">Room 1</div>
+                <div class="pdf-info" id="pdfInfo">
+                    <div class="pdf-status" id="pdfStatus">No PDF loaded</div>
+                    <div class="pdf-controls">
+                        <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" onchange="loadPDFFromFile(this)">
+                        <button class="upload-pdf-btn" onclick="document.getElementById('pdfFileInput').click()">Upload PDF</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -71,5 +76,43 @@
     <script src="js/room.js"></script>
     <script src="js/player.js"></script>
     <script src="js/game.js"></script>
+    
+    <script>
+        // Handle dropdown click toggle for mobile
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdownBtn = document.getElementById('uiDropdownBtn');
+            const dropdownContent = document.getElementById('uiDropdownContent');
+            let isOpen = false;
+            
+            dropdownBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                isOpen = !isOpen;
+                if (isOpen) {
+                    dropdownContent.style.opacity = '1';
+                    dropdownContent.style.visibility = 'visible';
+                    dropdownContent.style.transform = 'translateY(0)';
+                } else {
+                    dropdownContent.style.opacity = '0';
+                    dropdownContent.style.visibility = 'hidden';
+                    dropdownContent.style.transform = 'translateY(-10px)';
+                }
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function() {
+                if (isOpen) {
+                    isOpen = false;
+                    dropdownContent.style.opacity = '0';
+                    dropdownContent.style.visibility = 'hidden';
+                    dropdownContent.style.transform = 'translateY(-10px)';
+                }
+            });
+            
+            // Prevent dropdown from closing when clicking inside it
+            dropdownContent.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+    </script>
 </body>
 </html>
