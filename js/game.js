@@ -22,6 +22,10 @@ class Game {
         this.welcomeShown = false;
         this.controlsStartTime = null;
         
+        // Debug mode
+        this.debugMode = false; // Hidden by default
+        this.debugKeyPressed = false; // Track H key state for toggle
+        
         this.init();
     }
 
@@ -101,9 +105,7 @@ class Game {
     }
 
     update() {
-        if (this.isPaused) return;
-
-        // Update input manager
+        // Update input manager (always update for input detection)
         this.inputManager.update();
         
         // Handle pause (only for manual ESC pause, not focus loss)
@@ -111,14 +113,19 @@ class Game {
             this.togglePause();
         }
         
-        // Debug keys (commented out for production)
-        // if (this.inputManager.wasJustPressed('KeyH')) {
-        //     this.player.takeDamage(10);
-        // }
-        // if (this.inputManager.wasJustPressed('KeyG')) {
-        //     this.player.heal(10);
-        // }
+        // Debug mode toggle (works even when paused) - using manual debounce
+        const hPressed = this.inputManager.isPressed('KeyH');
+        if (hPressed && !this.debugKeyPressed) {
+            this.debugMode = !this.debugMode;
+            console.log(`Debug mode ${this.debugMode ? 'enabled' : 'disabled'}`);
+            this.debugKeyPressed = true;
+        } else if (!hPressed) {
+            this.debugKeyPressed = false;
+        }
         
+        // Early return if paused (after handling pause/debug inputs)
+        if (this.isPaused) return;
+
         // Update game systems
         this.roomManager.update(this.deltaTime, this.screenWidth, this.screenHeight);
         this.player.update(this.deltaTime, this.roomManager, this.inputManager);
@@ -167,14 +174,19 @@ class Game {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Render room (includes background and platforms)
-        this.roomManager.render(this.ctx);
+        this.roomManager.render(this.ctx, this.debugMode);
         
         // Render player
-        this.player.render(this.ctx);
+        this.player.render(this.ctx, this.debugMode);
         
         // Only show pause menu for manual pause, not focus loss pause
         if (this.isPaused && !this.pausedByFocusLoss) {
             this.renderPauseMenu();
+        }
+        
+        // Render debug info
+        if (this.debugMode) {
+            this.renderDebugInfo();
         }
     }
 
@@ -191,6 +203,33 @@ class Game {
         
         this.ctx.font = '24px Arial';
         this.ctx.fillText('Press ESC to resume', this.canvas.width / 2, this.canvas.height / 2 + 60);
+        
+        this.ctx.restore();
+    }
+
+    renderDebugInfo() {
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(10, 10, 250, 120);
+        
+        this.ctx.fillStyle = '#00ff00';
+        this.ctx.font = '14px monospace';
+        this.ctx.textAlign = 'left';
+        
+        const debugInfo = [
+            'DEBUG MODE (H to toggle)',
+            `FPS: ${Math.round(1 / this.deltaTime)}`,
+            `Player Pos: ${Math.round(this.player.position.x)}, ${Math.round(this.player.position.y)}`,
+            `Player Vel: ${Math.round(this.player.velocity.x)}, ${Math.round(this.player.velocity.y)}`,
+            `Room: ${this.roomManager.getCurrentRoom()?.id || 'None'}`,
+            `Health: ${this.player.health}/${this.player.maxHealth}`,
+            `Grounded: ${this.player.isGrounded}`,
+            `Attacking: ${this.player.isAttacking}`
+        ];
+        
+        debugInfo.forEach((line, index) => {
+            this.ctx.fillText(line, 15, 30 + index * 16);
+        });
         
         this.ctx.restore();
     }

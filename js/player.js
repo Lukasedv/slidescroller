@@ -37,16 +37,21 @@ class Player {
         
         // Attack debounce  
         this.spacePressed = false;
+        
+        // Damage cooldown to prevent rapid damage
+        this.damageCooldown = 1.0; // 1 second between damage instances
+        this.damageTimer = 0;
     }
 
     update(deltaTime, roomManager, inputManager) {
         this.handleInput(inputManager, deltaTime, roomManager);
         this.updatePhysics(deltaTime, roomManager);
-        this.updateCombat(deltaTime);
+        this.updateCombat(deltaTime, roomManager);
         this.updateAnimation(deltaTime);
         this.updateTransitions(deltaTime);
         this.checkRoomTransitions(roomManager, inputManager);
         this.updateHealth();
+        this.checkEnemyCollisions(roomManager);
     }
 
     handleInput(inputManager, deltaTime, roomManager) {
@@ -108,7 +113,7 @@ class Player {
         
         if (spacePressed && !this.spacePressed && this.attackCooldownTimer <= 0 && !this.isAttacking) {
             console.log('Attack triggered!');
-            this.startAttack();
+            this.startAttack(roomManager);
             this.spacePressed = true; // Mark as pressed to prevent repeated attacks
         }
         
@@ -159,7 +164,7 @@ class Player {
         this.position = nextPosition;
     }
 
-    updateCombat(deltaTime) {
+    updateCombat(deltaTime, roomManager) {
         const currentWeapon = this.weaponManager.getCurrentWeapon();
         
         if (this.isAttacking) {
@@ -223,7 +228,7 @@ class Player {
         this.transitionTimer = this.transitionCooldown;
     }
 
-    startAttack() {
+    startAttack(roomManager) {
         const currentWeapon = this.weaponManager.getCurrentWeapon();
         console.log(`Starting attack with ${currentWeapon.name}!`);
         
@@ -245,7 +250,21 @@ class Player {
         console.log('Attack timer set to:', this.attackTimer);
         console.log('Is attacking:', this.isAttacking);
 
-        // TODO: Check for enemies in attack range and deal damage
+        // Check for enemies in attack range and deal damage
+        if (roomManager && roomManager.getCurrentRoom()) {
+            const currentRoom = roomManager.getCurrentRoom();
+            const enemiesHit = currentRoom.damageEnemiesInRange(
+                this.position, 
+                this.size,
+                currentWeapon.range, 
+                this.facing, 
+                currentWeapon.damage
+            );
+            
+            if (enemiesHit > 0) {
+                console.log(`Hit ${enemiesHit} enemy(ies)!`);
+            }
+        }
     }
 
     updateHealth() {
@@ -277,7 +296,7 @@ class Player {
         this.weaponManager.addWeapon(weaponId, weapon);
     }
 
-    render(ctx) {
+    render(ctx, debugMode = false) {
         ctx.save();
         
         // Draw player shadow only when grounded
@@ -358,7 +377,7 @@ class Player {
         // Draw weapon attack animation when attacking
         if (this.isAttacking) {
             const attackProgress = 1 - (this.attackTimer / currentWeapon.attackDuration);
-            currentWeapon.renderAttack(ctx, this, attackProgress);
+            currentWeapon.renderAttack(ctx, this, attackProgress, debugMode);
         }
 
         // Draw enhanced movement indicator with outline
@@ -409,7 +428,48 @@ class Player {
             ctx.fillRect(healthBarX, healthBarY, fillWidth, healthBarHeight);
         }
 
+        // Draw player hitbox in debug mode
+        if (debugMode) {
+            const rect = this.getRect();
+            ctx.save();
+            ctx.strokeStyle = '#00ff00'; // Green for player hitbox
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.7;
+            ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            ctx.restore();
+        }
+
         ctx.restore();
+    }
+
+    checkEnemyCollisions(roomManager) {
+        if (!roomManager || !roomManager.getCurrentRoom()) return;
+        
+        const currentRoom = roomManager.getCurrentRoom();
+        
+        // Check if any enemy is colliding with the player
+        if (currentRoom.checkPlayerEnemyCollisions(this)) {
+            // Take damage from enemy collision
+            this.takeDamage(10); // Basic enemy contact damage
+        }
+    }
+
+    takeDamage(damage) {
+        this.health -= damage;
+        this.health = Math.max(0, this.health);
+        
+        console.log(`Player took ${damage} damage! Health: ${this.health}/${this.maxHealth}`);
+        
+        if (this.health <= 0) {
+            this.die();
+        }
+    }
+
+    die() {
+        console.log('Player died!');
+        // TODO: Trigger game over state
+        // For now, just reset health to prevent death loop
+        this.health = this.maxHealth;
     }
 
     getRect() {

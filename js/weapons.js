@@ -14,7 +14,7 @@ class Weapon {
     }
 
     // Override in subclasses to render attack animation
-    renderAttack(ctx, player, attackProgress) {
+    renderAttack(ctx, player, attackProgress, debugMode = false) {
         // Default implementation - no attack visual
     }
 
@@ -35,7 +35,7 @@ class Weapon {
 // Punch Weapon - Default fist fighting
 class PunchWeapon extends Weapon {
     constructor() {
-        super("Fists", 25, 35, 0.3, 0.5);
+        super("Fists", 25, 50, 0.3, 0.5); // Increased range from 35 to 50
         this.handSize = 8;
     }
 
@@ -75,9 +75,9 @@ class PunchWeapon extends Weapon {
         ctx.fillRect(rightHandX - 1, handY - 1, 2, 2);
     }
 
-    renderAttack(ctx, player, attackProgress) {
+    renderAttack(ctx, player, attackProgress, debugMode = false) {
         // Calculate punch extension based on attack progress
-        const maxPunchDistance = 20;
+        const maxPunchDistance = 25; // Increased to match new range
         const punchDistance = Math.sin(attackProgress * Math.PI) * maxPunchDistance;
         
         const armWidth = 4;
@@ -94,6 +94,24 @@ class PunchWeapon extends Weapon {
         const armY = player.position.y + player.size.y / 2 - 2 + bobOffset;
         const handX = armStartX + (player.facing > 0 ? armLength : -armLength - this.handSize);
         const handY = armY - this.handSize / 2;
+        
+        // Draw attack range indicator (semi-transparent area) - only in debug mode
+        if (debugMode) {
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#ffff00'; // Yellow attack area
+            const attackWidth = this.range;
+            const attackHeight = 80; // Match the hit detection area
+            
+            // Position attack area to align with weapon, not overlap with player
+            const attackX = player.facing > 0 ? 
+                player.position.x + player.size.x : // Start from right edge of player when facing right
+                player.position.x - attackWidth;     // End at left edge of player when facing left
+            const attackY = player.position.y - 20;
+            
+            ctx.fillRect(attackX, attackY, attackWidth, attackHeight);
+            ctx.restore();
+        }
         
         // Draw arm (rectangle extending from body)
         ctx.fillStyle = '#fdbcb4'; // Skin color

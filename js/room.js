@@ -10,7 +10,36 @@ class Room {
         this.leftTransition = null;
         this.rightTransition = null;
         
-        // No platform generation needed anymore
+        // Enemy management
+        this.enemyManager = new EnemyManager();
+        
+        // Spawn enemies starting from slide 2
+        this.spawnEnemies();
+    }
+
+    spawnEnemies() {
+        // Only spawn enemies from slide 2 onward
+        if (this.id >= 2) {
+            // Spawn 1-3 enemies per room based on room ID
+            const enemyCount = Math.min(1 + Math.floor((this.id - 2) / 3), 3);
+            
+            for (let i = 0; i < enemyCount; i++) {
+                // Use a more conservative screen width estimate or get from context
+                const screenWidth = 1000; // Safe default that works on most screens
+                
+                // Spawn enemies on the right side of the room (right 60% of screen)
+                const rightSideStart = screenWidth * 0.4; // Start at 40% from left
+                const rightSideWidth = screenWidth * 0.6; // Use 60% of screen width
+                const spacing = rightSideWidth / (enemyCount + 1);
+                const x = rightSideStart + spacing * (i + 1) - 10; // Adjust for enemy size
+                const y = 700; // Spawn much closer to ground (ground is at ~750)
+                
+                const enemy = new Enemy(x, y, 'basic', i); // Pass index for randomization
+                this.enemyManager.addEnemy(enemy);
+            }
+            
+            console.log(`Spawned ${enemyCount} enemies in room ${this.id}`);
+        }
     }
 
     generatePlatforms() {
@@ -19,12 +48,14 @@ class Room {
     }
 
     update(deltaTime) {
-        // Update enemies, items, etc.
-        this.enemies.forEach(enemy => enemy.update(deltaTime));
+        // Update enemy manager
+        this.enemyManager.update(deltaTime, this);
+        
+        // Update items
         this.items.forEach(item => item.update(deltaTime));
     }
 
-    render(ctx) {
+    render(ctx, debugMode = false) {
         // Get current screen dimensions
         const screenWidth = ctx.canvas.width;
         const screenHeight = ctx.canvas.height;
@@ -40,8 +71,10 @@ class Room {
         ctx.fillStyle = '#333';
         ctx.fillRect(0, screenHeight - 50, screenWidth, 50);
         
-        // Render enemies and items
-        this.enemies.forEach(enemy => enemy.render(ctx));
+        // Render enemies using enemy manager
+        this.enemyManager.render(ctx, debugMode);
+        
+        // Render items
         this.items.forEach(item => item.render(ctx));
     }
 
@@ -147,6 +180,23 @@ class Room {
     setTransitions(leftRoom, rightRoom) {
         this.leftTransition = leftRoom;
         this.rightTransition = rightRoom;
+    }
+
+    // Combat methods for enemy interaction
+    checkPlayerEnemyCollisions(player) {
+        return this.enemyManager.checkPlayerCollisions(player);
+    }
+
+    getEnemiesInAttackRange(playerPosition, playerSize, attackRange, playerFacing) {
+        return this.enemyManager.getEnemiesInRange(playerPosition, playerSize, attackRange, playerFacing);
+    }
+
+    damageEnemiesInRange(playerPosition, playerSize, attackRange, playerFacing, damage) {
+        const enemiesInRange = this.getEnemiesInAttackRange(playerPosition, playerSize, attackRange, playerFacing);
+        enemiesInRange.forEach(enemy => {
+            enemy.takeDamage(damage);
+        });
+        return enemiesInRange.length; // Return number of enemies hit
     }
 }
 
@@ -320,13 +370,13 @@ class RoomManager {
         }
     }
 
-    render(ctx) {
+    render(ctx, debugMode = false) {
         if (this.isLoadingPDF) {
             this.renderLoadingScreen(ctx);
         } else if (this.isTransitioning && this.nextRoom) {
-            this.renderTransition(ctx);
+            this.renderTransition(ctx, debugMode);
         } else if (this.currentRoom) {
-            this.currentRoom.render(ctx);
+            this.currentRoom.render(ctx, debugMode);
         }
     }
 
@@ -366,7 +416,7 @@ class RoomManager {
         ctx.fillText(`${Math.round(this.pdfLoadingProgress)}%`, screenWidth / 2, screenHeight / 2 + 80);
     }
 
-    renderTransition(ctx) {
+    renderTransition(ctx, debugMode = false) {
         const progress = this.transitionProgress;
         const screenWidth = ctx.canvas.width;
         const offset = this.transitionDirection === 'right' ? 
@@ -376,13 +426,13 @@ class RoomManager {
         
         // Render current room
         ctx.translate(offset, 0);
-        this.currentRoom.render(ctx);
+        this.currentRoom.render(ctx, debugMode);
         
         // Render next room
         const nextOffset = this.transitionDirection === 'right' ? 
             screenWidth : -screenWidth;
         ctx.translate(nextOffset, 0);
-        this.nextRoom.render(ctx);
+        this.nextRoom.render(ctx, debugMode);
         
         ctx.restore();
     }
