@@ -53,6 +53,9 @@ class Player {
         this.isKnockedBack = false;
         this.knockbackDuration = 0.3; // 300ms of knockback physics override
         this.knockbackTimer = 0;
+        
+        // Death callback
+        this.onDeath = null; // Callback function for when player dies
     }
 
     update(deltaTime, roomManager, inputManager) {
@@ -575,9 +578,21 @@ class Player {
 
     die() {
         console.log('Player died!');
-        // TODO: Trigger game over state
-        // For now, just reset health to prevent death loop
+        
+        // Call death callback if set
+        if (this.onDeath) {
+            this.onDeath();
+        }
+        
+        // Reset health to prevent death loop during respawn
         this.health = this.maxHealth;
+        
+        // Reset any ongoing states
+        this.isInvincible = false;
+        this.invincibilityTimer = 0;
+        this.isKnockedBack = false;
+        this.knockbackTimer = 0;
+        this.velocity = new Vector2(0, 0);
     }
 
     getRect() {

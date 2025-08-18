@@ -11,6 +11,9 @@ class Game {
         
         this.player = new Player(100, this.screenHeight - 150); // Place player near bottom with some margin
         
+        // Set up death callback
+        this.player.onDeath = () => this.startDeathEffect();
+        
         this.lastTime = 0;
         this.deltaTime = 0;
         this.isRunning = false;
@@ -25,6 +28,15 @@ class Game {
         // Debug mode
         this.debugMode = false; // Hidden by default
         this.debugKeyPressed = false; // Track H key state for toggle
+        
+        // Death effect state
+        this.isDying = false;
+        this.deathEffectTimer = 0;
+        this.deathEffectDuration = 2.0; // 2 seconds total death effect
+        this.deathFlashTimer = 0;
+        this.deathScrollTimer = 0;
+        this.deathStartRoom = 1; // Room where death started
+        this.deathPlayerStartX = 0; // Player X position when death started
         
         this.init();
     }
@@ -104,6 +116,110 @@ class Game {
         requestAnimationFrame(() => this.gameLoop());
     }
 
+    startDeathEffect() {
+        console.log('Starting death effect...');
+        
+        // Store current state for death animation
+        this.isDying = true;
+        this.deathEffectTimer = 0;
+        this.deathFlashTimer = 0;
+        this.deathScrollTimer = 0;
+        this.deathStartRoom = this.roomManager.currentRoom.id;
+        this.deathPlayerStartX = this.player.position.x;
+        
+        // Pause game updates during death effect
+        this.isPaused = true;
+        
+        // Stop any player movement
+        this.player.velocity = new Vector2(0, 0);
+        this.player.isKnockedBack = false;
+        this.player.isInvincible = true; // Prevent further damage during death effect
+    }
+
+    updateDeathEffect(deltaTime) {
+        if (!this.isDying) return;
+        
+        this.deathEffectTimer += deltaTime;
+        this.deathFlashTimer += deltaTime;
+        this.deathScrollTimer += deltaTime;
+        
+        // Phase 1: Red flash effect (first 0.5 seconds)
+        if (this.deathEffectTimer <= 0.5) {
+            // Flash red rapidly
+            // Flash timing handled in render
+        }
+        
+        // Phase 2: Scroll back to start (1.5 seconds)
+        else if (this.deathEffectTimer <= 2.0) {
+            const scrollProgress = (this.deathEffectTimer - 0.5) / 1.5; // 0 to 1 over 1.5 seconds
+            const easedProgress = this.easeInOutCubic(scrollProgress);
+            
+            // Smooth scroll through rooms back to room 1
+            const targetRoom = 1;
+            const roomDifference = this.deathStartRoom - targetRoom;
+            
+            if (roomDifference > 0) {
+                // Calculate which room to show during scroll
+                const currentScrollRoom = Math.max(1, Math.ceil(this.deathStartRoom - (roomDifference * easedProgress)));
+                
+                // Update room if it changed
+                if (this.roomManager.currentRoom.id !== currentScrollRoom) {
+                    this.roomManager.currentRoom = this.roomManager.rooms.get(currentScrollRoom);
+                }
+                
+                // Also scroll player position smoothly
+                const startX = this.deathPlayerStartX;
+                const targetX = 100; // Starting position
+                this.player.position.x = startX + (targetX - startX) * easedProgress;
+            }
+        }
+        
+        // Phase 3: Complete death effect
+        else {
+            this.completeDeathEffect();
+        }
+    }
+
+    easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    completeDeathEffect() {
+        console.log('Completing death effect and resetting...');
+        
+        // Complete the reset
+        this.resetToFirstRoom();
+        
+        // End death effect
+        this.isDying = false;
+        this.deathEffectTimer = 0;
+        this.isPaused = false; // Resume game
+    }
+
+    resetToFirstRoom() {
+        console.log('Player died! Resetting to first room and respawning enemies...');
+        
+        // Reset player position to starting position
+        this.player.position.x = 100;
+        this.player.position.y = this.screenHeight - 150;
+        this.player.velocity = new Vector2(0, 0);
+        this.player.isGrounded = true;
+        
+        // Reset player states
+        this.player.isInvincible = false;
+        this.player.invincibilityTimer = 0;
+        this.player.isKnockedBack = false;
+        this.player.knockbackTimer = 0;
+        
+        // Reset player to first room (room ID 1)
+        this.roomManager.currentRoom = this.roomManager.rooms.get(1);
+        
+        // Respawn all enemies in all rooms
+        this.roomManager.respawnAllEnemies();
+        
+        console.log('Reset complete! Player is back at room 1.');
+    }
+
     update() {
         // Update input manager (always update for input detection)
         this.inputManager.update();
@@ -121,6 +237,12 @@ class Game {
             this.debugKeyPressed = true;
         } else if (!hPressed) {
             this.debugKeyPressed = false;
+        }
+        
+        // Update death effect (runs even when paused)
+        if (this.isDying) {
+            this.updateDeathEffect(this.deltaTime);
+            return; // Don't update other systems during death effect
         }
         
         // Early return if paused (after handling pause/debug inputs)
@@ -179,8 +301,13 @@ class Game {
         // Render player
         this.player.render(this.ctx, this.debugMode);
         
+        // Render death effect if dying
+        if (this.isDying) {
+            this.renderDeathEffect();
+        }
+        
         // Only show pause menu for manual pause, not focus loss pause
-        if (this.isPaused && !this.pausedByFocusLoss) {
+        else if (this.isPaused && !this.pausedByFocusLoss) {
             this.renderPauseMenu();
         }
         
@@ -203,6 +330,59 @@ class Game {
         
         this.ctx.font = '24px Arial';
         this.ctx.fillText('Press ESC to resume', this.canvas.width / 2, this.canvas.height / 2 + 60);
+        
+        this.ctx.restore();
+    }
+
+    renderDeathEffect() {
+        this.ctx.save();
+        
+        // Phase 1: Red flash effect (first 0.5 seconds)
+        if (this.deathEffectTimer <= 0.5) {
+            const flashIntensity = Math.sin(this.deathFlashTimer * 20) * 0.5 + 0.5; // Rapid flash between 0 and 1
+            const alpha = 0.3 + (flashIntensity * 0.4); // Flash between 0.3 and 0.7 alpha
+            
+            this.ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Add "DEFEATED" text during flash
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = 'bold 64px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.lineWidth = 4;
+            this.ctx.strokeText('DEFEATED', this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.fillText('DEFEATED', this.canvas.width / 2, this.canvas.height / 2);
+        }
+        
+        // Phase 2: Scrolling back effect with dimming
+        else if (this.deathEffectTimer <= 2.0) {
+            const scrollProgress = (this.deathEffectTimer - 0.5) / 1.5;
+            const dimAlpha = 0.1 + (scrollProgress * 0.4); // Gradually dim screen
+            
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${dimAlpha})`;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Show scrolling text
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = '32px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('Returning to start...', this.canvas.width / 2, this.canvas.height / 2 + 100);
+            
+            // Progress bar for scrolling
+            const barWidth = 300;
+            const barHeight = 8;
+            const barX = (this.canvas.width - barWidth) / 2;
+            const barY = this.canvas.height / 2 + 130;
+            
+            // Background bar
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            this.ctx.fillRect(barX, barY, barWidth, barHeight);
+            
+            // Progress bar
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillRect(barX, barY, barWidth * scrollProgress, barHeight);
+        }
         
         this.ctx.restore();
     }

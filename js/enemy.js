@@ -18,6 +18,13 @@ class Enemy {
         this.health = this.maxHealth;
         this.isAlive = true;
         
+        // Spawning properties
+        this.isSpawning = false;
+        this.spawnDelay = 0;
+        this.spawnTimer = 0;
+        this.hasLanded = false;
+        this.landingEffect = 0; // For visual effects when landing
+        
         // Movement pattern with randomization
         this.baseSpeed = 60; // Base speed
         this.speed = this.baseSpeed + (Math.random() - 0.5) * 20; // ±10 speed variation
@@ -42,9 +49,38 @@ class Enemy {
     update(deltaTime, room) {
         if (!this.isAlive) return;
         
+        // Handle spawning state
+        if (this.isSpawning) {
+            this.updateSpawning(deltaTime);
+            // Only apply physics during spawning, no movement patterns
+            this.updatePhysics(deltaTime, room);
+            this.updateAnimation(deltaTime);
+            return;
+        }
+        
         this.updateMovement(deltaTime, room);
         this.updatePhysics(deltaTime, room);
         this.updateAnimation(deltaTime);
+    }
+
+    updateSpawning(deltaTime) {
+        // Handle spawn delay
+        if (this.spawnDelay > 0) {
+            this.spawnDelay -= deltaTime;
+            return; // Don't fall yet, wait for delay
+        }
+        
+        // Count down spawn timer for effects
+        this.spawnTimer += deltaTime;
+        
+        // Check if enemy has landed (touched ground)
+        if (this.isGrounded && !this.hasLanded) {
+            this.hasLanded = true;
+            this.landingEffect = 0.3; // Landing effect duration
+            this.isSpawning = false; // Stop spawning state
+            this.startX = this.position.x; // Set patrol center to landing position
+            console.log(`Enemy ${this.index} landed and started patrolling`);
+        }
     }
 
     updateMovement(deltaTime, room) {
@@ -87,9 +123,9 @@ class Enemy {
         this.position.y += this.velocity.y * deltaTime;
         
         // Ground collision (simple floor detection)
-        // Use more accurate screen bounds - default to 800 height
-        const screenHeight = 800;
-        const screenWidth = 1000;
+        // Use current screen dimensions from room instead of hardcoded values
+        const screenHeight = room.screenHeight || 800; // Fallback to 800 if not available
+        const screenWidth = room.screenWidth || 1000; // Fallback to 1000 if not available
         const groundY = screenHeight - 50; // Match the ground rendering in room.js
         
         if (this.position.y + this.size.y >= groundY) {
@@ -113,6 +149,11 @@ class Enemy {
     updateAnimation(deltaTime) {
         this.animationTimer += deltaTime;
         
+        // Handle landing effect countdown
+        if (this.landingEffect > 0) {
+            this.landingEffect -= deltaTime;
+        }
+        
         // Varied bobbing animation with phase offset for desync
         const bobFrequency = 4 + (this.index * 0.5); // Different frequencies per enemy
         this.bobOffset = Math.sin(this.animationTimer * bobFrequency + this.phaseOffset) * 1;
@@ -121,43 +162,71 @@ class Enemy {
     render(ctx) {
         if (!this.isAlive) return;
         
+        // Don't render if still waiting for spawn delay
+        if (this.isSpawning && this.spawnDelay > 0) return;
+        
         const drawX = this.position.x;
         const drawY = this.position.y + this.bobOffset;
         
-        // Draw enemy body (simple rectangle with rounded corners)
+        // Add landing effect (screen shake or size bounce)
+        let sizeMultiplier = 1;
+        if (this.landingEffect > 0) {
+            sizeMultiplier = 1 + (this.landingEffect * 0.5); // Bounce effect when landing
+        }
+        
+        // Add spawning effect (fade in or glow)
+        let alpha = 1;
+        if (this.isSpawning) {
+            alpha = Math.min(1, this.spawnTimer * 2); // Fade in over 0.5 seconds
+        }
+        
         ctx.save();
+        ctx.globalAlpha = alpha;
+        
+        // Add glow effect during landing
+        if (this.landingEffect > 0) {
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 10 * this.landingEffect;
+        }
+        
+        // Draw enemy body (simple rectangle with rounded corners)
         ctx.fillStyle = this.color;
+        
+        const renderWidth = this.size.x * sizeMultiplier;
+        const renderHeight = this.size.y * sizeMultiplier;
+        const renderX = drawX - (renderWidth - this.size.x) / 2;
+        const renderY = drawY - (renderHeight - this.size.y) / 2;
         
         // Draw main body - use fillRect as fallback for roundRect
         if (ctx.roundRect) {
             ctx.beginPath();
-            ctx.roundRect(drawX, drawY, this.size.x, this.size.y, 4);
+            ctx.roundRect(renderX, renderY, renderWidth, renderHeight, 4);
             ctx.fill();
         } else {
             // Fallback for browsers without roundRect
-            ctx.fillRect(drawX, drawY, this.size.x, this.size.y);
+            ctx.fillRect(renderX, renderY, renderWidth, renderHeight);
         }
         
-        // Draw eyes
+        // Draw eyes (adjusted for size multiplier)
         ctx.fillStyle = this.eyeColor;
-        const eyeSize = 3;
-        const eyeY = drawY + 6;
+        const eyeSize = 3 * sizeMultiplier;
+        const eyeY = renderY + (6 * sizeMultiplier);
         
         // Left eye
         ctx.beginPath();
-        ctx.arc(drawX + 6, eyeY, eyeSize, 0, Math.PI * 2);
+        ctx.arc(renderX + (6 * sizeMultiplier), eyeY, eyeSize, 0, Math.PI * 2);
         ctx.fill();
         
         // Right eye
         ctx.beginPath();
-        ctx.arc(drawX + this.size.x - 6, eyeY, eyeSize, 0, Math.PI * 2);
+        ctx.arc(renderX + renderWidth - (6 * sizeMultiplier), eyeY, eyeSize, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw simple mouth
+        // Draw simple mouth (adjusted for size multiplier)
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(drawX + this.size.x / 2, drawY + 16, 4, 0, Math.PI);
+        ctx.arc(renderX + renderWidth / 2, renderY + (16 * sizeMultiplier), 4 * sizeMultiplier, 0, Math.PI);
         ctx.stroke();
         
         ctx.restore();
@@ -264,15 +333,17 @@ class EnemyManager {
     // Get enemies that can be hit by player attack
     getEnemiesInRange(playerPosition, playerSize, attackRange, playerFacing) {
         // Calculate attack area in front of the player, aligned with weapon position
-        // Make the attack area wider and taller for easier hitting
+        // Make the attack area wider and taller for easier hitting, extending to floor
         const attackWidth = attackRange;
-        const attackHeight = 80; // Taller attack area
+        const attackHeight = 120; // Much taller attack area to cover from player to ground
         
         // Position attack area to align with weapon, not overlap with player
         const attackX = playerFacing > 0 ? 
             playerPosition.x + playerSize.x : // Start from right edge of player when facing right
             playerPosition.x - attackWidth;   // End at left edge of player when facing left
-        const attackY = playerPosition.y - 20; // Center the attack area around player height
+        
+        // Make attack area extend from player center down to ground level
+        const attackY = playerPosition.y + (playerSize.y / 2) - 10; // Start slightly above player center
         
         const attackRect = new Rectangle(
             attackX, 

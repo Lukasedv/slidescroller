@@ -101,13 +101,15 @@ class PunchWeapon extends Weapon {
             ctx.globalAlpha = 0.3;
             ctx.fillStyle = '#ffff00'; // Yellow attack area
             const attackWidth = this.range;
-            const attackHeight = 80; // Match the hit detection area
+            const attackHeight = 120; // Match the hit detection area (updated to match enemy.js)
             
             // Position attack area to align with weapon, not overlap with player
             const attackX = player.facing > 0 ? 
                 player.position.x + player.size.x : // Start from right edge of player when facing right
                 player.position.x - attackWidth;     // End at left edge of player when facing left
-            const attackY = player.position.y - 20;
+            
+            // Make attack area extend from player center down to ground level (match enemy.js)
+            const attackY = player.position.y + (player.size.y / 2) - 10; // Start slightly above player center
             
             ctx.fillRect(attackX, attackY, attackWidth, attackHeight);
             ctx.restore();

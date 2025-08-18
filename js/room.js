@@ -13,33 +13,80 @@ class Room {
         // Enemy management
         this.enemyManager = new EnemyManager();
         
+        // Store screen dimensions for enemy spawning
+        this.screenWidth = 1000; // Default values
+        this.screenHeight = 800;
+        
         // Spawn enemies starting from slide 2
-        this.spawnEnemies();
+        this.spawnEnemies(this.screenWidth, this.screenHeight);
     }
 
-    spawnEnemies() {
+    spawnEnemies(screenWidth = 1000, screenHeight = 800) {
         // Only spawn enemies from slide 2 onward
         if (this.id >= 2) {
             // Spawn 1-3 enemies per room based on room ID
             const enemyCount = Math.min(1 + Math.floor((this.id - 2) / 3), 3);
             
             for (let i = 0; i < enemyCount; i++) {
-                // Use a more conservative screen width estimate or get from context
-                const screenWidth = 1000; // Safe default that works on most screens
-                
                 // Spawn enemies on the right side of the room (right 60% of screen)
                 const rightSideStart = screenWidth * 0.4; // Start at 40% from left
                 const rightSideWidth = screenWidth * 0.6; // Use 60% of screen width
                 const spacing = rightSideWidth / (enemyCount + 1);
                 const x = rightSideStart + spacing * (i + 1) - 10; // Adjust for enemy size
-                const y = 700; // Spawn much closer to ground (ground is at ~750)
+                
+                // Spawn enemies above the screen with a small delay between spawns
+                const spawnHeight = -50 - (i * 30); // Spawn progressively higher for visual effect
+                const y = spawnHeight;
                 
                 const enemy = new Enemy(x, y, 'basic', i); // Pass index for randomization
+                enemy.isSpawning = true; // Mark as spawning for special effects
+                enemy.spawnDelay = i * 0.2; // Stagger spawn timing
+                
                 this.enemyManager.addEnemy(enemy);
             }
             
-            console.log(`Spawned ${enemyCount} enemies in room ${this.id}`);
+            console.log(`Spawned ${enemyCount} enemies in room ${this.id} - they will drop from above`);
         }
+    }
+
+    respawnEnemies(screenWidth = this.screenWidth, screenHeight = this.screenHeight) {
+        // Clear existing enemies
+        this.enemyManager.clear();
+        
+        // Spawn fresh enemies with current screen dimensions
+        this.spawnEnemies(screenWidth, screenHeight);
+        
+        console.log(`Respawned enemies in room ${this.id}`);
+    }
+
+    repositionEnemies(screenWidth, screenHeight) {
+        // Only reposition if we have enemies
+        if (this.id < 2 || this.enemyManager.enemies.length === 0) return;
+        
+        console.log(`Repositioning ${this.enemyManager.enemies.length} enemies in room ${this.id}`);
+        
+        // Calculate new ground level
+        const groundLevel = screenHeight - 50;
+        const enemyGroundY = groundLevel - 20; // Enemy size is 20
+        
+        // Reposition each enemy to new ground level while keeping relative X positions
+        this.enemyManager.enemies.forEach((enemy, index) => {
+            if (enemy.isAlive) {
+                // Keep the same relative X position but update Y to new ground level
+                const enemyCount = this.enemyManager.enemies.filter(e => e.isAlive).length;
+                const rightSideStart = screenWidth * 0.4;
+                const rightSideWidth = screenWidth * 0.6;
+                const spacing = rightSideWidth / (enemyCount + 1);
+                const newX = rightSideStart + spacing * (index + 1) - 10;
+                
+                enemy.position.x = newX;
+                enemy.position.y = enemyGroundY;
+                enemy.isGrounded = true; // Ensure they're considered on ground
+                enemy.velocity.y = 0; // Stop any falling
+                
+                console.log(`Repositioned enemy ${index} to (${newX}, ${enemyGroundY})`);
+            }
+        });
     }
 
     generatePlatforms() {
@@ -47,7 +94,19 @@ class Room {
         this.platforms = [];
     }
 
-    update(deltaTime) {
+    update(deltaTime, screenWidth, screenHeight) {
+        // Check if screen dimensions changed and reposition enemies accordingly
+        if (screenWidth && screenHeight && 
+            (screenWidth !== this.screenWidth || screenHeight !== this.screenHeight)) {
+            
+            console.log(`Screen size changed from ${this.screenWidth}x${this.screenHeight} to ${screenWidth}x${screenHeight}`);
+            this.screenWidth = screenWidth;
+            this.screenHeight = screenHeight;
+            
+            // Reposition enemies to match new ground level
+            this.repositionEnemies(screenWidth, screenHeight);
+        }
+        
         // Update enemy manager
         this.enemyManager.update(deltaTime, this);
         
@@ -366,7 +425,7 @@ class RoomManager {
         }
         
         if (this.currentRoom) {
-            this.currentRoom.update(deltaTime);
+            this.currentRoom.update(deltaTime, screenWidth, screenHeight);
         }
     }
 
@@ -474,6 +533,17 @@ class RoomManager {
 
     getCurrentRoom() {
         return this.currentRoom;
+    }
+
+    respawnAllEnemies() {
+        console.log('Respawning all enemies in all rooms...');
+        
+        // Iterate through all rooms and respawn their enemies
+        for (const [roomId, room] of this.rooms) {
+            room.respawnEnemies();
+        }
+        
+        console.log(`Respawned enemies in ${this.rooms.size} rooms`);
     }
 
     /**
