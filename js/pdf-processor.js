@@ -212,13 +212,18 @@ class PDFProcessor {
 
             this.updateProgress(30, 'PDF loaded, processing pages...');
 
-            const numPages = Math.min(this.pdfDocument.numPages, 100); // Limit to 100 pages
+            const numPages = Math.min(this.pdfDocument.numPages, 50); // Reduced from 100 for better performance
             console.log(`Processing ${numPages} pages from PDF`);
 
-            // Convert each page to image
+            // Convert each page to image with better progress feedback
             this.pageImages = [];
             for (let pageNum = 1; pageNum <= numPages; pageNum++) {
                 try {
+                    // Add small delay to prevent blocking the UI
+                    if (pageNum % 5 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 10)); // 10ms break every 5 pages
+                    }
+                    
                     const image = await this.convertPageToImage(pageNum);
                     this.pageImages.push(image);
                     
@@ -253,32 +258,31 @@ class PDFProcessor {
     async convertPageToImage(pageNumber) {
         const page = await this.pdfDocument.getPage(pageNumber);
         
-        // Calculate scale based on screen resolution for high-quality rendering
-        // For 4K screens (3840x2160), use higher scale
+        // Calculate scale based on screen resolution for balanced quality/performance
         const screenWidth = window.innerWidth || 1920;
         const screenHeight = window.innerHeight || 1080;
         const devicePixelRatio = window.devicePixelRatio || 1;
         
-        // Base scale calculation for optimal quality
-        let scale = 3.0; // Minimum for good quality
+        // Optimized scale calculation for better performance
+        let scale = 1.5; // Reduced from 3.0 for better performance
         
-        // Increase scale for high-resolution displays
+        // More conservative scaling for high-resolution displays
         if (screenWidth >= 3840 || screenHeight >= 2160) {
-            scale = 6.0; // 4K resolution
+            scale = 2.5; // Reduced from 6.0 for 4K
         } else if (screenWidth >= 2560 || screenHeight >= 1440) {
-            scale = 4.5; // 1440p resolution
+            scale = 2.0; // Reduced from 4.5 for 1440p
         } else if (screenWidth >= 1920 || screenHeight >= 1080) {
-            scale = 4.0; // 1080p resolution
+            scale = 1.8; // Slightly increased from base
         }
         
-        // Apply device pixel ratio for Retina displays
-        scale *= devicePixelRatio;
+        // Apply device pixel ratio but cap it to prevent excessive scaling
+        scale *= Math.min(devicePixelRatio, 2.0); // Cap at 2x to prevent performance issues
         
         const viewport = page.getViewport({ scale });
 
         // Create canvas to render the page
         const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
+        const context = canvas.getContext('2d', { willReadFrequently: true });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
         
@@ -294,12 +298,17 @@ class PDFProcessor {
 
         await page.render(renderContext).promise;
 
-        // Convert canvas to image data URL with maximum quality
-        const imageDataUrl = canvas.toDataURL('image/png'); // Use PNG for better quality
+        // Use JPEG for better performance and smaller file size
+        // Quality of 0.9 provides good balance between quality and performance
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
         
         // Create image object
         const img = new Image();
         img.src = imageDataUrl;
+        
+        // Clean up canvas to free memory
+        canvas.width = 0;
+        canvas.height = 0;
         
         return new Promise((resolve) => {
             img.onload = () => resolve(img);
@@ -313,6 +322,11 @@ class PDFProcessor {
     updateProgress(progress, message) {
         this.loadingProgress = progress;
         console.log(`PDF Processing: ${progress}% - ${message}`);
+        
+        // Provide performance tips for users
+        if (progress === 30 && this.pdfDocument && this.pdfDocument.numPages > 50) {
+            console.log('Performance tip: Large PDFs may take a moment to process. Consider using smaller PDFs (under 50 pages) for optimal performance.');
+        }
         
         if (this.onProgressCallback) {
             this.onProgressCallback(progress, message);

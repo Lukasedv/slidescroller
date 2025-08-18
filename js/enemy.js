@@ -258,7 +258,7 @@ class EnemyManager {
 
     // Check if any enemy can damage the player
     checkPlayerCollisions(player) {
-        return this.enemies.some(enemy => enemy.canDamagePlayer(player));
+        return this.enemies.find(enemy => enemy.canDamagePlayer(player)) || null;
     }
 
     // Get enemies that can be hit by player attack

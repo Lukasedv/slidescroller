@@ -1,7 +1,7 @@
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         this.inputManager = new InputManager();
         this.roomManager = new RoomManager();
         

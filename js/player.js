@@ -41,6 +41,18 @@ class Player {
         // Damage cooldown to prevent rapid damage
         this.damageCooldown = 1.0; // 1 second between damage instances
         this.damageTimer = 0;
+        
+        // Invincibility system
+        this.invincibilityDuration = 1.0; // 1 second of invincibility
+        this.invincibilityTimer = 0;
+        this.isInvincible = false;
+        this.flashTimer = 0;
+        this.flashInterval = 0.1; // Flash every 100ms during invincibility
+        
+        // Knockback system
+        this.isKnockedBack = false;
+        this.knockbackDuration = 0.3; // 300ms of knockback physics override
+        this.knockbackTimer = 0;
     }
 
     update(deltaTime, roomManager, inputManager) {
@@ -51,12 +63,19 @@ class Player {
         this.updateTransitions(deltaTime);
         this.checkRoomTransitions(roomManager, inputManager);
         this.updateHealth();
+        this.updateInvincibility(deltaTime);
         this.checkEnemyCollisions(roomManager);
     }
 
     handleInput(inputManager, deltaTime, roomManager) {
         const currentRoom = roomManager.getCurrentRoom();
         if (!currentRoom || roomManager.isTransitioning) return;
+
+        // Don't process movement input during knockback
+        if (this.isKnockedBack) {
+            console.log('Skipping input handling during knockback');
+            return;
+        }
 
         // Horizontal movement
         let horizontalInput = 0;
@@ -135,8 +154,8 @@ class Player {
         if (this.position.y < groundLevel - this.size.y) {
             this.velocity.y += this.gravity * deltaTime;
             this.isGrounded = false;
-        } else {
-            // On ground
+        } else if (!this.isKnockedBack) {
+            // Only snap to ground if not being knocked back
             this.position.y = groundLevel - this.size.y;
             if (this.velocity.y > 0) {
                 this.velocity.y = 0;
@@ -154,7 +173,14 @@ class Player {
         // Keep player in horizontal bounds for room transitions
         const screenWidth = roomManager.screenWidth || 1200;
         this.position.x = clamp(this.position.x, 0, screenWidth - this.size.x);
-        this.position.y = clamp(this.position.y, 0, screenHeight - this.size.y);
+        
+        // Only clamp Y position if not being knocked back
+        if (!this.isKnockedBack) {
+            this.position.y = clamp(this.position.y, 0, screenHeight - this.size.y);
+        } else {
+            // During knockback, allow some movement above ground but prevent going below
+            this.position.y = Math.min(this.position.y, screenHeight - this.size.y);
+        }
     }
 
     handleCollisions(nextPosition, room) {
@@ -272,11 +298,94 @@ class Player {
         // No DOM manipulation needed
     }
 
-    takeDamage(amount) {
+    updateInvincibility(deltaTime) {
+        if (this.isInvincible) {
+            this.invincibilityTimer -= deltaTime;
+            this.flashTimer += deltaTime;
+            
+            if (this.invincibilityTimer <= 0) {
+                this.isInvincible = false;
+                this.invincibilityTimer = 0;
+                this.flashTimer = 0;
+            }
+        }
+        
+        if (this.isKnockedBack) {
+            this.knockbackTimer -= deltaTime;
+            
+            if (this.knockbackTimer <= 0) {
+                this.isKnockedBack = false;
+                this.knockbackTimer = 0;
+            }
+        }
+    }
+
+    takeDamage(amount, enemyPosition = null) {
+        console.log('takeDamage called!', amount, enemyPosition, 'isInvincible:', this.isInvincible);
+        
+        // Don't take damage if invincible
+        if (this.isInvincible) {
+            console.log('Player is invincible, ignoring damage');
+            return;
+        }
+        
         this.health = Math.max(0, this.health - amount);
         
-        // Add some visual feedback for taking damage
-        // TODO: Add damage flash effect
+        // Start invincibility period
+        this.isInvincible = true;
+        this.invincibilityTimer = this.invincibilityDuration;
+        this.flashTimer = 0;
+        
+        // Apply knockback if enemy position is provided
+        if (enemyPosition) {
+            console.log('Enemy position provided for knockback:', enemyPosition);
+            console.log('Enemy position details:', {
+                position: enemyPosition.position,
+                size: enemyPosition.size
+            });
+            
+            const knockbackForce = 800; // Much stronger knockback
+            const upwardForce = 500; // Strong upward component
+            
+            // Use correct enemy position structure (enemy.position.x, not enemy.x)
+            const knockbackDirection = new Vector2(
+                this.position.x + this.size.x/2 - (enemyPosition.position.x + enemyPosition.size.x/2),
+                this.position.y + this.size.y/2 - (enemyPosition.position.y + enemyPosition.size.y/2)
+            );
+            
+            console.log('Knockback direction calculation:', {
+                playerCenter: { x: this.position.x + this.size.x/2, y: this.position.y + this.size.y/2 },
+                enemyCenter: { x: enemyPosition.position.x + enemyPosition.size.x/2, y: enemyPosition.position.y + enemyPosition.size.y/2 },
+                direction: { x: knockbackDirection.x, y: knockbackDirection.y }
+            });
+            
+            // Normalize and apply knockback
+            if (knockbackDirection.length() > 0) {
+                knockbackDirection.normalize();
+                
+                // Apply strong horizontal knockback
+                this.velocity.x = knockbackDirection.x * knockbackForce;
+                
+                // Always apply significant upward force, regardless of enemy position
+                this.velocity.y = -upwardForce; // Always launch upward
+                
+                // Activate knockback state to override ground physics temporarily
+                this.isKnockedBack = true;
+                this.knockbackTimer = this.knockbackDuration;
+                this.isGrounded = false; // Force player into air
+                
+                console.log(`Knockback applied! Direction: ${knockbackDirection.x.toFixed(2)}, ${knockbackDirection.y.toFixed(2)}, Velocity: ${this.velocity.x.toFixed(2)}, ${this.velocity.y.toFixed(2)}`);
+                console.log('Knockback state:', { isKnockedBack: this.isKnockedBack, knockbackTimer: this.knockbackTimer });
+            }
+        } else {
+            console.log('No enemy position provided for knockback!');
+        }
+        
+        console.log(`Player took ${amount} damage! Health: ${this.health}/${this.maxHealth}`);
+        
+        if (this.health <= 0) {
+            this.die();
+        }
     }
 
     heal(amount) {
@@ -322,7 +431,15 @@ class Player {
         ctx.strokeRect(this.position.x - 0.5, this.position.y - 0.5, this.size.x + 1, this.size.y + 1);
 
         // Draw player body with Microsoft logo
-        ctx.fillStyle = '#ffffff'; // Always white, no color change when attacking
+        // Determine player color based on invincibility status
+        let playerColor = '#ffffff'; // Default white
+        if (this.isInvincible) {
+            // Flash white more brightly during invincibility
+            const flashCycle = Math.floor(this.flashTimer / this.flashInterval) % 2;
+            playerColor = flashCycle === 0 ? '#ffffff' : '#ffffdd'; // Flash between white and very light yellow
+        }
+        
+        ctx.fillStyle = playerColor;
         ctx.fillRect(this.position.x, this.position.y, this.size.x, this.size.y);
         
         // Draw Microsoft logo (4 colored squares)
@@ -448,20 +565,11 @@ class Player {
         const currentRoom = roomManager.getCurrentRoom();
         
         // Check if any enemy is colliding with the player
-        if (currentRoom.checkPlayerEnemyCollisions(this)) {
-            // Take damage from enemy collision
-            this.takeDamage(10); // Basic enemy contact damage
-        }
-    }
-
-    takeDamage(damage) {
-        this.health -= damage;
-        this.health = Math.max(0, this.health);
-        
-        console.log(`Player took ${damage} damage! Health: ${this.health}/${this.maxHealth}`);
-        
-        if (this.health <= 0) {
-            this.die();
+        const collidingEnemy = currentRoom.checkPlayerEnemyCollisions(this);
+        if (collidingEnemy) {
+            console.log('Enemy collision detected!', collidingEnemy);
+            // Take damage from enemy collision with knockback
+            this.takeDamage(10, collidingEnemy); // Pass enemy for knockback calculation
         }
     }
 

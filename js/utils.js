@@ -17,6 +17,19 @@ class Vector2 {
     clone() {
         return new Vector2(this.x, this.y);
     }
+
+    length() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    normalize() {
+        const len = this.length();
+        if (len > 0) {
+            this.x /= len;
+            this.y /= len;
+        }
+        return this;
+    }
 }
 
 class Rectangle {
